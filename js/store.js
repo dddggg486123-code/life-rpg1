@@ -552,18 +552,36 @@ async function decryptData(encoded, password) {
 
 // --- Possessions CRUD ---
 
+const WANTED_PRIORITY_LABELS = {
+  low: '🤍 想要',
+  normal: '💛 需要',
+  high: '🧡 急需',
+  urgent: '❤️ 必入',
+};
+
+const WANTED_PRIORITY_COLORS = {
+  low: '#4a9e4a',
+  normal: '#4a7eb5',
+  high: '#c4723a',
+  urgent: '#d04040',
+};
+
 function addPossession(data, pos) {
+  const status = pos.status || 'owned';
   const p = {
     id: generateId(),
     name: pos.name || '',
     description: pos.description || '',
     image: pos.image || '',
     category: pos.category || '',
-    purchaseDate: pos.purchaseDate || '',
-    purchasePrice: parseFloat(pos.purchasePrice) || 0,
-    status: 'owned',
+    status: status,
+    purchaseDate: status === 'owned' ? (pos.purchaseDate || todayStr()) : '',
+    purchasePrice: status === 'owned' ? (parseFloat(pos.purchasePrice) || 0) : 0,
     sellDate: null,
     sellPrice: null,
+    targetPrice: status === 'wanted' ? (parseFloat(pos.targetPrice) || 0) : 0,
+    priority: pos.priority || 'normal',
+    link: pos.link || '',
   };
   data.possessions.push(p);
   saveData(data);
@@ -592,8 +610,17 @@ function sellPossession(data, id, sellPrice) {
   saveData(data);
 }
 
+function buyPossession(data, id, purchasePrice) {
+  const p = data.possessions.find(x => x.id === id);
+  if (!p || p.status !== 'wanted') return;
+  p.status = 'owned';
+  p.purchaseDate = todayStr();
+  p.purchasePrice = parseFloat(purchasePrice) || p.targetPrice || 0;
+  saveData(data);
+}
+
 function getDaysOwned(p) {
-  if (!p.purchaseDate) return 0;
+  if (p.status === 'wanted' || !p.purchaseDate) return 0;
   const start = new Date(p.purchaseDate);
   const end = p.status === 'sold' && p.sellDate ? new Date(p.sellDate) : new Date();
   return Math.max(1, Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1);
@@ -609,6 +636,12 @@ function getTotalAssetValue(data) {
   return data.possessions
     .filter(p => p.status === 'owned')
     .reduce((sum, p) => sum + (p.purchasePrice || 0), 0);
+}
+
+function getWantedTotal(data) {
+  return data.possessions
+    .filter(p => p.status === 'wanted')
+    .reduce((sum, p) => sum + (p.targetPrice || 0), 0);
 }
 
 // --- Todos CRUD ---

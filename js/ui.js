@@ -1184,7 +1184,6 @@ function renderPossessionsTab(data) {
   const catFilter = el('pos-filter-cat');
   const statusFilter = el('pos-filter-status');
 
-  // Build category filter options
   const cats = [...new Set(data.possessions.map(p => p.category).filter(Boolean))];
   catFilter.innerHTML = '<option value="all">全部分类</option>' +
     cats.map(c => `<option value="${c}" ${catFilter.value === c ? 'selected' : ''}>${c}</option>`).join('');
@@ -1199,7 +1198,8 @@ function renderPossessionsTab(data) {
 
   // Stats
   el('stat-asset-value').textContent = getTotalAssetValue(data).toFixed(2);
-  el('stat-possession-count').textContent = data.possessions.filter(p => p.status === 'owned').length;
+  el('stat-wanted-value').textContent = getWantedTotal(data).toFixed(2);
+  el('stat-possession-count').textContent = data.possessions.filter(p => p.status !== 'sold').length;
 
   if (filtered.length === 0) {
     list.innerHTML = '';
@@ -1209,25 +1209,45 @@ function renderPossessionsTab(data) {
     list.innerHTML = filtered.map(p => {
       const days = getDaysOwned(p);
       const daily = getDailyCost(p);
-      const statusLabel = p.status === 'sold' ? '已售出' : '持有中';
-      const statusColor = p.status === 'sold' ? 'var(--text-dim)' : 'var(--success)';
+      let statusBadge, statusColor;
+      if (p.status === 'wanted') {
+        statusBadge = WANTED_PRIORITY_LABELS[p.priority] + ' 愿望中';
+        statusColor = WANTED_PRIORITY_COLORS[p.priority];
+      } else if (p.status === 'sold') {
+        statusBadge = '🔚 已售出';
+        statusColor = 'var(--text-dim)';
+      } else {
+        statusBadge = '✅ 持有中';
+        statusColor = 'var(--success)';
+      }
       return `
-        <div class="pixel-card possession-item" style="${p.status === 'sold' ? 'opacity:0.6' : ''}">
+        <div class="pixel-card possession-item" style="${p.status === 'sold' ? 'opacity:0.6' : p.status === 'wanted' ? 'border-style:dashed;border-color:#9b4aca' : ''}">
           <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-            ${p.image ? `<div><img src="${p.image}" style="width:72px;height:72px;object-fit:cover;border:2px solid var(--border);image-rendering:pixelated" loading="lazy"></div>` : `<div style="width:72px;height:72px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:#111">📦</div>`}
+            ${p.image ? `<div><img src="${p.image}" style="width:72px;height:72px;object-fit:cover;border:2px solid var(--border);image-rendering:pixelated" loading="lazy"></div>` : `<div style="width:72px;height:72px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:#111">${p.status === 'wanted' ? '🎁' : '📦'}</div>`}
             <div style="flex:1;min-width:180px">
               <div class="task-name">${p.name}</div>
               ${p.description ? `<div class="task-desc">${p.description}</div>` : ''}
               <div style="font-size:9px;color:var(--text-dim);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px">
                 ${p.category ? `<span>🏷️ ${p.category}</span>` : ''}
-                <span>📅 购入: ${p.purchaseDate || '未知'}</span>
-                <span>📆 已用: ${days} 天</span>
-                <span>💵 价格: ¥${(p.purchasePrice || 0).toFixed(2)}</span>
-                <span style="color:var(--accent)">📊 日均: ¥${daily.toFixed(2)}/天</span>
-                <span style="color:${statusColor}">${p.status === 'sold' ? `🔚 售出: ¥${(p.sellPrice || 0).toFixed(2)}` : '✅ 持有中'}</span>
+                ${p.status === 'wanted' ? `
+                  ${p.targetPrice ? `<span style="color:var(--accent)">🎯 目标价: ¥${p.targetPrice.toFixed(2)}</span>` : ''}
+                  ${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">🔗 链接</a>` : ''}
+                ` : ''}
+                ${p.status === 'owned' ? `
+                  <span>📅 购入: ${p.purchaseDate || '未知'}</span>
+                  <span>📆 已用: ${days} 天</span>
+                  <span>💵 价格: ¥${(p.purchasePrice || 0).toFixed(2)}</span>
+                  <span style="color:var(--accent)">📊 日均: ¥${daily.toFixed(2)}/天</span>
+                ` : ''}
+                ${p.status === 'sold' ? `
+                  <span>📅 购入: ${p.purchaseDate || '未知'}</span>
+                  <span>🔚 售出: ¥${(p.sellPrice || 0).toFixed(2)}</span>
+                ` : ''}
+                <span style="color:${statusColor}">${statusBadge}</span>
               </div>
             </div>
             <div class="task-actions" style="flex-shrink:0">
+              ${p.status === 'wanted' ? `<button class="btn btn-success btn-sm pos-buy-btn" data-id="${p.id}" title="标记为已购买">购买</button>` : ''}
               ${p.status === 'owned' ? `<button class="btn btn-sm pos-sell-btn" data-id="${p.id}">出售</button>` : ''}
               <button class="btn btn-sm pos-edit-btn" data-id="${p.id}">编辑</button>
               <button class="btn btn-danger btn-sm pos-delete-btn" data-id="${p.id}">删除</button>
@@ -1237,15 +1257,24 @@ function renderPossessionsTab(data) {
     }).join('');
   }
 
-  // Filter handlers
   catFilter.onchange = function() { renderPossessionsTab(data); };
   statusFilter.onchange = function() { renderPossessionsTab(data); };
 }
 
 function showPossessionModal(data, pos) {
   const isEdit = !!pos;
-  const title = isEdit ? '编辑物品' : '新物品';
-  const defaults = pos || { name: '', description: '', category: '', purchaseDate: todayStr(), purchasePrice: '' };
+  const isWanted = pos && pos.status === 'wanted';
+  const title = isEdit ? '编辑物品' : (isWanted ? '编辑愿望' : '新物品');
+  const defaults = pos || { name: '', description: '', category: '', status: 'owned' };
+
+  const statusOpts = `
+    <option value="owned" ${defaults.status === 'owned' ? 'selected' : ''}>持有中</option>
+    <option value="wanted" ${defaults.status === 'wanted' ? 'selected' : ''}>愿望中</option>
+  `;
+
+  const priorityOpts = Object.entries(WANTED_PRIORITY_LABELS).map(([k, v]) =>
+    `<option value="${k}" ${(defaults.priority || 'normal') === k ? 'selected' : ''}>${v}</option>`
+  ).join('');
 
   const body = `
     <div class="form-group">
@@ -1267,12 +1296,32 @@ function showPossessionModal(data, pos) {
       <input type="text" name="category" value="${defaults.category}" maxlength="20" placeholder="如: 电子产品、家具、书籍">
     </div>
     <div class="form-group">
-      <label>购买日期</label>
-      <input type="date" name="purchaseDate" value="${defaults.purchaseDate}">
+      <label>状态</label>
+      <select name="status" id="pos-status-select">${statusOpts}</select>
     </div>
-    <div class="form-group">
-      <label>购买价格 (¥)</label>
-      <input type="number" name="purchasePrice" value="${defaults.purchasePrice}" min="0" step="0.01" placeholder="0.00">
+    <div id="pos-owned-fields" style="${defaults.status === 'wanted' ? 'display:none' : ''}">
+      <div class="form-group">
+        <label>购买日期</label>
+        <input type="date" name="purchaseDate" value="${defaults.purchaseDate || todayStr()}">
+      </div>
+      <div class="form-group">
+        <label>购买价格 (¥)</label>
+        <input type="number" name="purchasePrice" value="${defaults.purchasePrice || ''}" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div id="pos-wanted-fields" style="${defaults.status === 'wanted' ? '' : 'display:none'}">
+      <div class="form-group">
+        <label>目标价格 (¥)</label>
+        <input type="number" name="targetPrice" value="${defaults.targetPrice || ''}" min="0" step="0.01" placeholder="期望价格...">
+      </div>
+      <div class="form-group">
+        <label>渴望程度</label>
+        <select name="priority">${priorityOpts}</select>
+      </div>
+      <div class="form-group">
+        <label>购买链接（可选）</label>
+        <input type="url" name="link" value="${defaults.link || ''}" placeholder="https://..." maxlength="500">
+      </div>
     </div>
   `;
 
@@ -1284,6 +1333,24 @@ function showPossessionModal(data, pos) {
     }
     renderAll(data);
   });
+
+  // Status toggle: show/hide owned vs wanted fields
+  setTimeout(function() {
+    const statusSelect = document.getElementById('pos-status-select');
+    const ownedFields = document.getElementById('pos-owned-fields');
+    const wantedFields = document.getElementById('pos-wanted-fields');
+    if (statusSelect && ownedFields && wantedFields) {
+      statusSelect.onchange = function() {
+        if (this.value === 'wanted') {
+          ownedFields.style.display = 'none';
+          wantedFields.style.display = '';
+        } else {
+          ownedFields.style.display = '';
+          wantedFields.style.display = 'none';
+        }
+      };
+    }
+  }, 50);
 }
 
 // --- Todos Tab ---
@@ -1566,7 +1633,23 @@ function setupEventDelegation(data) {
     }
   });
 
-  // Possession check (sell)
+  // Possession buy (wanted → owned)
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.pos-buy-btn');
+    if (btn) {
+      const p = data.possessions.find(x => x.id === btn.dataset.id);
+      if (p) {
+        const price = prompt('输入实际购买价格 (¥)：', p.targetPrice || '0');
+        if (price !== null) {
+          buyPossession(data, btn.dataset.id, parseFloat(price) || 0);
+          renderAll(data);
+        }
+      }
+      return;
+    }
+  });
+
+  // Possession sell (owned → sold)
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.pos-sell-btn');
     if (btn) {
