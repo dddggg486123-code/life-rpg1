@@ -391,12 +391,39 @@
   <script src="js/ui.js?v=7" defer></script>
   <script src="js/app.js?v=7" defer></script>
   <script>
+    // Global error display — shows errors visibly on the page
+    window.onerror = function(msg, url, line, col, err) {
+      var app = document.getElementById('app');
+      if (app) {
+        var box = document.createElement('div');
+        box.style.cssText = 'margin:20px;padding:16px;background:#400;color:#f88;border:3px solid #d04040;font-size:12px;line-height:1.8;word-break:break-all';
+        box.innerHTML = '<strong>⚠ 初始化错误</strong><br>' +
+          '<span>' + (msg || '') + '</span><br>' +
+          '<small>文件: ' + (url || '') + ':' + (line || '') + '</small><br>' +
+          '<small style="color:#aaa">请尝试清除浏览器缓存后刷新，或联系开发者。</small>';
+        app.insertBefore(box, app.firstChild);
+      }
+      return false;
+    };
+
     var APP_VERSION = 'v7.0';
+
+    // Self-healing service worker: unregister old SWs first, then register new one
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js?v=7').then(function(reg) {
-        // Force update check on every load
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        // Unregister any old (non-v7) service workers
+        var unregisterPromises = [];
+        regs.forEach(function(reg) {
+          if (reg.active && reg.active.scriptURL.indexOf('v=7') === -1) {
+            unregisterPromises.push(reg.unregister());
+          }
+        });
+        return Promise.all(unregisterPromises);
+      }).then(function() {
+        // Register the current SW
+        return navigator.serviceWorker.register('./service-worker.js?v=7');
+      }).then(function(reg) {
         reg.update();
-        // Listen for new version message from SW
         navigator.serviceWorker.addEventListener('message', function(e) {
           if (e.data && e.data.type === 'SW_UPDATED') {
             var toast = document.createElement('div');
@@ -407,6 +434,8 @@
             setTimeout(function() { if (toast.parentNode) toast.remove(); }, 8000);
           }
         });
+      }).catch(function(err) {
+        console.warn('SW registration failed, app works without offline support:', err);
       });
     }
   </script>
