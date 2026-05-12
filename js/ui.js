@@ -2224,6 +2224,7 @@ function setupEventDelegation(data) {
       return;
     }
   });
+}
 
 // --- Init ---
 

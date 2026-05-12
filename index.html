@@ -9,8 +9,8 @@
   <meta name="theme-color" content="#1a1a2e">
   <meta name="description" content="人生評価システム — 像素RPG风格的人生成长追踪系统，通过成就解锁属性，像素小人随属性变化">
   <title>人生評価システム</title>
-  <link rel="preload" href="css/pixel.css" as="style">
-  <link rel="stylesheet" href="css/pixel.css">
+  <link rel="preload" href="css/pixel.css?v=5" as="style">
+  <link rel="stylesheet" href="css/pixel.css?v=5">
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=MedievalSharp&family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Caveat:wght@400;700&display=swap" media="print" onload="this.media='all';this.onload=null">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=MedievalSharp&family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Caveat:wght@400;700&display=swap"></noscript>
@@ -388,14 +388,14 @@
     </div>
   </nav>
 
-  <script src="js/store.js" defer></script>
-  <script src="js/character.js" defer></script>
-  <script src="js/ui.js" defer></script>
-  <script src="js/app.js" defer></script>
+  <script src="js/store.js?v=5" defer></script>
+  <script src="js/character.js?v=5" defer></script>
+  <script src="js/ui.js?v=5" defer></script>
+  <script src="js/app.js?v=5" defer></script>
   <script>
-    var APP_VERSION = 'v5.0';
+    var APP_VERSION = 'v6.0';
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js').then(function(reg) {
+      navigator.serviceWorker.register('./service-worker.js?v=6').then(function(reg) {
         // Force update check on every load
         reg.update();
         // Listen for new version message from SW
