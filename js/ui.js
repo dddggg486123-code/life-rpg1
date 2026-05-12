@@ -1209,21 +1209,28 @@ function renderPossessionsTab(data) {
     list.innerHTML = filtered.map(p => {
       const days = getDaysOwned(p);
       const daily = getDailyCost(p);
-      let statusBadge, statusColor;
+      let statusBadge, statusColor, cardOpacity;
       if (p.status === 'wanted') {
         statusBadge = WANTED_PRIORITY_LABELS[p.priority] + ' 愿望中';
         statusColor = WANTED_PRIORITY_COLORS[p.priority];
+        cardOpacity = '';
+      } else if (p.status === 'consumed') {
+        statusBadge = '🗑️ 已用完';
+        statusColor = 'var(--text-dim)';
+        cardOpacity = 'opacity:0.5';
       } else if (p.status === 'sold') {
         statusBadge = '🔚 已售出';
         statusColor = 'var(--text-dim)';
+        cardOpacity = 'opacity:0.6';
       } else {
         statusBadge = '✅ 持有中';
         statusColor = 'var(--success)';
+        cardOpacity = '';
       }
       return `
-        <div class="pixel-card possession-item" style="${p.status === 'sold' ? 'opacity:0.6' : p.status === 'wanted' ? 'border-style:dashed;border-color:#9b4aca' : ''}">
+        <div class="pixel-card possession-item" style="${cardOpacity};${p.status === 'wanted' ? 'border-style:dashed;border-color:#9b4aca' : ''}">
           <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-            ${p.image ? `<div><img src="${p.image}" style="width:72px;height:72px;object-fit:cover;border:2px solid var(--border);image-rendering:pixelated" loading="lazy"></div>` : `<div style="width:72px;height:72px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:#111">${p.status === 'wanted' ? '🎁' : '📦'}</div>`}
+            ${p.image ? `<div><img src="${p.image}" style="width:72px;height:72px;object-fit:cover;border:2px solid var(--border);image-rendering:pixelated" loading="lazy"></div>` : `<div style="width:72px;height:72px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:#111">${p.status === 'wanted' ? '🎁' : p.status === 'consumed' ? '🗑️' : '📦'}</div>`}
             <div style="flex:1;min-width:180px">
               <div class="task-name">${p.name}</div>
               ${p.description ? `<div class="task-desc">${p.description}</div>` : ''}
@@ -1243,11 +1250,18 @@ function renderPossessionsTab(data) {
                   <span>📅 购入: ${p.purchaseDate || '未知'}</span>
                   <span>🔚 售出: ¥${(p.sellPrice || 0).toFixed(2)}</span>
                 ` : ''}
+                ${p.status === 'consumed' ? `
+                  <span>📅 购入: ${p.purchaseDate || '未知'}</span>
+                  <span>🗑️ 用完: ${p.sellDate || '未知'}</span>
+                  <span>📆 使用: ${days} 天</span>
+                  <span style="color:var(--accent)">📊 日均: ¥${daily.toFixed(2)}/天</span>
+                ` : ''}
                 <span style="color:${statusColor}">${statusBadge}</span>
               </div>
             </div>
             <div class="task-actions" style="flex-shrink:0">
               ${p.status === 'wanted' ? `<button class="btn btn-success btn-sm pos-buy-btn" data-id="${p.id}" title="标记为已购买">购买</button>` : ''}
+              ${p.status === 'owned' ? `<button class="btn btn-sm pos-consume-btn" data-id="${p.id}" title="用完/吃掉/消耗">用完</button>` : ''}
               ${p.status === 'owned' ? `<button class="btn btn-sm pos-sell-btn" data-id="${p.id}">出售</button>` : ''}
               <button class="btn btn-sm pos-edit-btn" data-id="${p.id}">编辑</button>
               <button class="btn btn-danger btn-sm pos-delete-btn" data-id="${p.id}">删除</button>
@@ -1627,6 +1641,18 @@ function setupEventDelegation(data) {
     if (btn) {
       if (confirm('确定删除该技能？')) {
         deleteSkill(data, btn.dataset.id);
+        renderAll(data);
+      }
+      return;
+    }
+  });
+
+  // Possession consume (owned → consumed)
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.pos-consume-btn');
+    if (btn) {
+      if (confirm('确定已用完/吃掉该物品？')) {
+        consumePossession(data, btn.dataset.id);
         renderAll(data);
       }
       return;

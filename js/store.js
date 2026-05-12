@@ -610,6 +610,15 @@ function sellPossession(data, id, sellPrice) {
   saveData(data);
 }
 
+function consumePossession(data, id) {
+  const p = data.possessions.find(x => x.id === id);
+  if (!p || p.status !== 'owned') return;
+  p.status = 'consumed';
+  p.sellDate = todayStr();
+  p.sellPrice = null;
+  saveData(data);
+}
+
 function buyPossession(data, id, purchasePrice) {
   const p = data.possessions.find(x => x.id === id);
   if (!p || p.status !== 'wanted') return;
@@ -622,7 +631,8 @@ function buyPossession(data, id, purchasePrice) {
 function getDaysOwned(p) {
   if (p.status === 'wanted' || !p.purchaseDate) return 0;
   const start = new Date(p.purchaseDate);
-  const end = p.status === 'sold' && p.sellDate ? new Date(p.sellDate) : new Date();
+  const isEnded = p.status === 'sold' || p.status === 'consumed';
+  const end = isEnded && p.sellDate ? new Date(p.sellDate) : new Date();
   return Math.max(1, Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1);
 }
 
