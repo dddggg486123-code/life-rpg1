@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# Dependencies
+node_modules/
+
+# Local data exports (contains personal info)
+*.json
+!manifest.json
+!package.json
+
+# Temp files
+*.tmp
+*.log

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LifeRPG">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>人生評価システム</title>
+  <link rel="stylesheet" href="css/pixel.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <div id="header" class="pixel-box">
+      <h1>人生評価システム</h1>
+      <p style="font-size:11px;color:var(--text-dim)">Life Status RPG</p>
+      <div class="header-actions">
+        <select id="font-select" style="font-family:'Press Start 2P','SimHei',monospace;font-size:9px;padding:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border)"></select>
+        <button class="btn btn-info btn-sm" id="btn-export">导出存档</button>
+        <button class="btn btn-info btn-sm" id="btn-import">导入存档</button>
+        <input type="file" id="import-file" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div id="tab-nav" class="pixel-box" style="padding:8px">
+      <button class="tab-btn active" data-tab="character">角色</button>
+      <button class="tab-btn" data-tab="attributes">属性</button>
+      <button class="tab-btn" data-tab="achievements">成就</button>
+      <button class="tab-btn" data-tab="tasks">任务</button>
+      <button class="tab-btn" data-tab="dailies">日常</button>
+      <button class="tab-btn" data-tab="skills">技能</button>
+      <button class="tab-btn" data-tab="possessions">财产</button>
+      <button class="tab-btn" data-tab="todos">待办</button>
+      <button class="tab-btn" data-tab="diary">日记</button>
+      <button class="tab-btn" data-tab="review">回顾</button>
+    </div>
+
+    <!-- Content -->
+    <div id="content">
+      <!-- Character Tab -->
+      <div class="tab-content active" id="tab-character">
+        <div class="character-layout">
+          <div class="character-sprite-box pixel-box">
+            <canvas id="char-canvas"></canvas>
+            <div class="character-selector" style="margin-top:12px">
+              <label style="font-size:10px;color:var(--text-dim)">选择角色</label>
+              <select id="char-preset-select"></select>
+            </div>
+            <div style="margin-top:8px">
+              <label style="font-size:10px;color:var(--text-dim)">自定义形象</label>
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button class="btn btn-sm" id="btn-upload-avatar" style="flex:1;font-size:8px">上传图片</button>
+                <button class="btn btn-danger btn-sm" id="btn-clear-avatar" style="display:none;font-size:8px">清除</button>
+              </div>
+              <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+            </div>
+            <div style="margin-top:8px">
+              <label style="font-size:10px;color:var(--text-dim)">角色名称</label>
+              <input type="text" id="char-name" maxlength="12" style="width:100%;margin-top:4px;padding:6px;font-family:'Press Start 2P','SimHei',monospace;font-size:10px;background:#111;color:var(--text);border:2px solid var(--border);text-align:center">
+            </div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <div style="flex:1">
+                <label style="font-size:9px;color:var(--text-dim)">身高(cm)</label>
+                <input type="number" id="char-height" min="100" max="250" style="width:100%;margin-top:2px;padding:4px;font-size:10px;background:#111;color:var(--text);border:2px solid var(--border);text-align:center">
+              </div>
+              <div style="flex:1">
+                <label style="font-size:9px;color:var(--text-dim)">体重(kg)</label>
+                <input type="number" id="char-weight" min="30" max="300" style="width:100%;margin-top:2px;padding:4px;font-size:10px;background:#111;color:var(--text);border:2px solid var(--border);text-align:center">
+              </div>
+            </div>
+            <div id="bmi-display" style="margin-top:8px;font-size:11px;font-weight:bold;text-align:center;padding:4px;border:2px solid var(--border);background:#111"></div>
+          </div>
+          <div class="attr-overview pixel-box">
+            <h2>属性面板</h2>
+            <div id="attr-overview-list"></div>
+            <div class="stats-row">
+              <div class="stat-item">📊 总点数: <span id="stat-total">0</span></div>
+              <div class="stat-item">🏆 成就: <span id="stat-ach">0/0</span></div>
+              <div class="stat-item">📋 任务: <span id="stat-task">0/0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attributes Tab -->
+      <div class="tab-content" id="tab-attributes">
+        <div class="pixel-box">
+          <h2>属性详情</h2>
+          <p style="font-size:10px;color:var(--text-dim);margin-bottom:12px">通过完成成就获得属性点数</p>
+          <div id="attr-detail-list"></div>
+          <div class="overflow-pool" id="overflow-pool" style="display:none">
+            <h3>溢出点数池</h3>
+            <p>你有 <strong id="overflow-amount">0</strong> 点溢出点数可分配</p>
+            <div style="margin-top:8px">
+              <select id="overflow-target" style="font-family:'Press Start 2P','SimHei',monospace;font-size:9px;padding:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border);margin-right:8px"></select>
+              <button class="btn btn-accent btn-sm" id="btn-allocate">分配 1 点</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Achievements Tab -->
+      <div class="tab-content" id="tab-achievements">
+        <div class="section-header">
+          <h2>成就列表</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-ach">+ 新成就</button>
+        </div>
+        <div class="filter-bar">
+          <select id="ach-filter-diff">
+            <option value="all">全部难度</option>
+            <option value="easy">简单</option>
+            <option value="normal">普通</option>
+            <option value="hard">困难</option>
+            <option value="epic">史诗</option>
+          </select>
+          <select id="ach-filter-status">
+            <option value="all">全部状态</option>
+            <option value="completed">已完成</option>
+            <option value="uncompleted">未完成</option>
+          </select>
+        </div>
+        <div class="achievement-grid" id="achievement-list"></div>
+        <div class="empty-state" id="ach-empty" style="display:none">
+          <div class="empty-icon">🏅</div>
+          <p>还没有成就，快来创建第一个吧！</p>
+        </div>
+      </div>
+
+      <!-- Tasks Tab -->
+      <div class="tab-content" id="tab-tasks">
+        <div class="section-header">
+          <h2>任务列表</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-task">+ 新任务</button>
+        </div>
+        <div class="task-list" id="task-list"></div>
+        <div class="empty-state" id="task-empty" style="display:none">
+          <div class="empty-icon">📋</div>
+          <p>还没有任务，创建任务并关联成就吧！</p>
+        </div>
+      </div>
+
+      <!-- Dailies Tab -->
+      <div class="tab-content" id="tab-dailies">
+        <div class="section-header">
+          <h2>今日日常</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-daily">+ 新日常</button>
+        </div>
+        <div class="daily-list" id="daily-list"></div>
+        <div class="empty-state" id="daily-empty" style="display:none">
+          <div class="empty-icon">📅</div>
+          <p>还没有日常任务！</p>
+        </div>
+      </div>
+
+      <!-- Skills Tab -->
+      <div class="tab-content" id="tab-skills">
+        <div class="section-header">
+          <h2>技能列表</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-skill">+ 新技能</button>
+        </div>
+        <div class="skill-list" id="skill-list"></div>
+        <div class="empty-state" id="skill-empty" style="display:none">
+          <div class="empty-icon">⚔️</div>
+          <p>还没有技能，添加你想学的技能吧！</p>
+        </div>
+      </div>
+
+      <!-- Possessions Tab -->
+      <div class="tab-content" id="tab-possessions">
+        <div class="section-header">
+          <h2>财产管理</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-possession">+ 新物品</button>
+        </div>
+        <div class="stats-row" style="margin-bottom:12px">
+          <div class="stat-item">💰 持有资产: <span id="stat-asset-value">0</span> 元</div>
+          <div class="stat-item">📦 物品数: <span id="stat-possession-count">0</span></div>
+        </div>
+        <div class="filter-bar">
+          <select id="pos-filter-cat">
+            <option value="all">全部分类</option>
+          </select>
+          <select id="pos-filter-status">
+            <option value="all">全部状态</option>
+            <option value="owned">持有中</option>
+            <option value="sold">已出售</option>
+          </select>
+        </div>
+        <div class="possession-list" id="possession-list"></div>
+        <div class="empty-state" id="possession-empty" style="display:none">
+          <div class="empty-icon">🎒</div>
+          <p>还没有记录物品，添加你的财产吧！</p>
+        </div>
+      </div>
+
+      <!-- Todos Tab -->
+      <div class="tab-content" id="tab-todos">
+        <div class="section-header">
+          <h2>待办事项</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-todo">+ 新待办</button>
+        </div>
+        <div class="filter-bar">
+          <select id="todo-filter-priority">
+            <option value="all">全部优先级</option>
+            <option value="low">低</option>
+            <option value="normal">普通</option>
+            <option value="high">高</option>
+            <option value="urgent">紧急</option>
+          </select>
+          <select id="todo-filter-status">
+            <option value="all">全部状态</option>
+            <option value="uncompleted">未完成</option>
+            <option value="completed">已完成</option>
+          </select>
+        </div>
+        <div class="todo-list" id="todo-list"></div>
+        <div class="empty-state" id="todo-empty" style="display:none">
+          <div class="empty-icon">📝</div>
+          <p>还没有待办事项，添加你想做的事吧！</p>
+        </div>
+      </div>
+
+      <!-- Diary Tab -->
+      <div class="tab-content" id="tab-diary">
+        <div class="section-header">
+          <h2>日记与反思</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-diary">+ 写日记</button>
+        </div>
+        <div class="filter-bar">
+          <select id="diary-filter-mood">
+            <option value="all">全部心情</option>
+            <option value="great">😄 超棒</option>
+            <option value="good">🙂 不错</option>
+            <option value="neutral">😐 一般</option>
+            <option value="bad">😞 低落</option>
+            <option value="terrible">😢 很差</option>
+          </select>
+          <input type="text" id="diary-search" placeholder="搜索日记..." style="font-size:10px;padding:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border);flex:1;min-width:120px;max-width:220px">
+        </div>
+        <div class="diary-list" id="diary-list"></div>
+        <div class="empty-state" id="diary-empty" style="display:none">
+          <div class="empty-icon">📖</div>
+          <p>还没有日记，记录你每天的思考和感受吧</p>
+        </div>
+      </div>
+
+      <!-- Review Tab -->
+      <div class="tab-content" id="tab-review">
+        <div class="section-header">
+          <h2>成长回顾</h2>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm chart-period-btn active" data-period="30">30天</button>
+            <button class="btn btn-sm chart-period-btn" data-period="90">90天</button>
+            <button class="btn btn-sm chart-period-btn" data-period="180">半年</button>
+            <button class="btn btn-sm chart-period-btn" data-period="365">全年</button>
+          </div>
+        </div>
+        <div class="pixel-box" style="margin-bottom:12px">
+          <h3>属性趋势</h3>
+          <select id="review-attr-select" style="margin-bottom:8px;font-size:10px;padding:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border)">
+            <!-- filled by JS -->
+          </select>
+          <canvas id="chart-canvas" style="width:100%;height:200px;border:2px solid var(--border);background:#111"></canvas>
+        </div>
+        <div class="pixel-box" style="margin-bottom:12px">
+          <h3>活动日历 (近30天)</h3>
+          <div id="calendar-heatmap" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:8px"></div>
+          <div style="margin-top:8px;display:flex;gap:12px;font-size:9px;color:var(--text-dim)">
+            <span>🟢 活跃</span><span>🟡 一般</span><span>⚪ 无记录</span>
+          </div>
+        </div>
+        <div class="stats-row pixel-box">
+          <div class="stat-item">📊 数据记录天数: <span id="stat-history-days">0</span></div>
+          <div class="stat-item">✅ 活跃天数(30d): <span id="stat-active-days">0</span></div>
+          <div class="stat-item">📈 总成长点数: <span id="stat-total-growth">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Container -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none">
+    <div class="modal" id="modal-content"></div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/character.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js');
+    }
+  </script>
+</body>
+</html>
