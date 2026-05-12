@@ -40,12 +40,26 @@
       <h1>人生評価システム</h1>
       <p style="font-size:11px;color:var(--text-dim)">Life Status RPG</p>
       <div class="header-actions">
+        <button class="sound-toggle on" id="btn-sound" title="音效开关">🔊</button>
         <select id="font-select" style="font-family:'Press Start 2P','SimHei',monospace;font-size:9px;padding:6px;background:var(--bg-card);color:var(--text);border:2px solid var(--border)"></select>
         <button class="btn btn-info btn-sm" id="btn-export">导出存档</button>
         <button class="btn btn-info btn-sm" id="btn-import">导入存档</button>
         <button class="btn btn-accent btn-sm" id="btn-sync" title="加密同步到其他设备">🔄 同步</button>
         <input type="file" id="import-file" accept=".json" style="display:none">
       </div>
+    </div>
+
+    <!-- Level Bar -->
+    <div class="pixel-box" id="level-bar" style="padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="level-badge">
+        <span id="level-icon">⚔️</span>
+        <span>Lv.<span class="level-num" id="level-num">1</span></span>
+        <span id="level-title">新手冒险者</span>
+      </div>
+      <div class="xp-bar-wrap">
+        <div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div>
+      </div>
+      <span style="font-size:9px;color:var(--text-dim);white-space:nowrap"><span id="xp-current">0</span>/<span id="xp-next">50</span> XP</span>
     </div>
 
     <!-- Tab Navigation -->
@@ -101,11 +115,7 @@
           <div class="attr-overview pixel-box">
             <h2>属性面板</h2>
             <div id="attr-overview-list"></div>
-            <div class="stats-row">
-              <div class="stat-item">📊 总点数: <span id="stat-total">0</span></div>
-              <div class="stat-item">🏆 成就: <span id="stat-ach">0/0</span></div>
-              <div class="stat-item">📋 任务: <span id="stat-task">0/0</span></div>
-            </div>
+            <div class="stats-row dash-cards"></div>
           </div>
         </div>
       </div>
@@ -330,6 +340,26 @@
   <div class="modal-overlay" id="modal-overlay" style="display:none">
     <div class="modal" id="modal-content"></div>
   </div>
+
+  <!-- Quick Action FAB -->
+  <button class="fab" id="fab-btn" title="快速操作">+</button>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <div class="bottom-nav-inner" id="bottom-nav-inner">
+      <button class="bottom-nav-btn active" data-tab="character"><span class="bn-icon">⚔️</span>角色</button>
+      <button class="bottom-nav-btn" data-tab="attributes"><span class="bn-icon">📊</span>属性</button>
+      <button class="bottom-nav-btn" data-tab="achievements"><span class="bn-icon">🏆</span>成就</button>
+      <button class="bottom-nav-btn" data-tab="tasks"><span class="bn-icon">📋</span>任务</button>
+      <button class="bottom-nav-btn" data-tab="dailies"><span class="bn-icon">📅</span>日常</button>
+      <button class="bottom-nav-btn" data-tab="skills"><span class="bn-icon">📚</span>技能</button>
+      <button class="bottom-nav-btn" data-tab="possessions"><span class="bn-icon">🎒</span>财产</button>
+      <button class="bottom-nav-btn" data-tab="todos"><span class="bn-icon">📝</span>待办</button>
+      <button class="bottom-nav-btn" data-tab="diary"><span class="bn-icon">📖</span>日记</button>
+      <button class="bottom-nav-btn" data-tab="review"><span class="bn-icon">📈</span>回顾</button>
+      <button class="bottom-nav-btn" data-tab="bookmarks"><span class="bn-icon">🔗</span>收藏</button>
+    </div>
+  </nav>
 
   <script src="js/store.js" defer></script>
   <script src="js/character.js" defer></script>

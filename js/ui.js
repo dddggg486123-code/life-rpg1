@@ -81,7 +81,7 @@ function showModal(title, bodyHtml, onSave) {
       const file = this.files[0];
       if (!file) return;
       if (file.size > 500 * 1024) {
-        alert('图片大小不能超过 500KB');
+        showToast('图片大小不能超过 500KB', 'warning');
         this.value = '';
         return;
       }
@@ -108,7 +108,7 @@ function showModal(title, bodyHtml, onSave) {
       const file = this.files[0];
       if (!file) return;
       if (file.size > 500 * 1024) {
-        alert('图片大小不能超过 500KB');
+        showToast('图片大小不能超过 500KB', 'warning');
         this.value = '';
         return;
       }
@@ -134,9 +134,25 @@ function closeModal() {
   modalCallback = null;
 }
 
+// --- Level Bar Update ---
+
+function updateLevelBar(data) {
+  const total = getTotalAttributePoints(data);
+  const lvl = getLevel(total);
+  el('level-icon').textContent = getLevelIcon(lvl.level);
+  el('level-num').textContent = lvl.level;
+  el('level-title').textContent = lvl.title;
+  el('xp-bar-fill').style.width = lvl.xpProgress + '%';
+  el('xp-current').textContent = lvl.xp;
+  el('xp-next').textContent = lvl.xpNext;
+}
+
 // --- Character Tab ---
 
 function renderCharacterTab(data) {
+  // Update level bar
+  updateLevelBar(data);
+
   // Preset selector
   const select = el('char-preset-select');
   select.innerHTML = CHARACTER_PRESETS.map(p =>
@@ -210,7 +226,7 @@ function renderCharacterTab(data) {
       const file = e.target.files[0];
       if (!file) return;
       if (file.size > 500 * 1024) {
-        alert('图片大小不能超过 500KB');
+        showToast('图片大小不能超过 500KB', 'warning');
         this.value = '';
         return;
       }
@@ -253,10 +269,43 @@ function renderCharacterTab(data) {
   // Attribute overview bars
   renderAttrOverview(data);
 
-  // Stats
-  el('stat-total').textContent = getTotalAttributePoints(data);
-  el('stat-ach').textContent = `${getCompletedAchievements(data)}/${getTotalAchievements(data)}`;
-  el('stat-task').textContent = `${data.tasks.filter(t => t.completed).length}/${data.tasks.length}`;
+  // Dashboard cards
+  var totalAttr = getTotalAttributePoints(data);
+  var lvl = getLevel(totalAttr);
+  var statsRow = qs('.stats-row', qs('#tab-character'));
+  if (statsRow) {
+    statsRow.innerHTML =
+      '<div class="dash-card pixel-card">' +
+        '<div class="dash-icon">' + getLevelIcon(lvl.level) + '</div>' +
+        '<div class="dash-val">Lv.' + lvl.level + '</div>' +
+        '<div class="dash-label">' + lvl.title + '</div>' +
+      '</div>' +
+      '<div class="dash-card pixel-card highlight">' +
+        '<div class="dash-icon">⭐</div>' +
+        '<div class="dash-val">' + totalAttr + '</div>' +
+        '<div class="dash-label">总属性点</div>' +
+      '</div>' +
+      '<div class="dash-card pixel-card">' +
+        '<div class="dash-icon">🏆</div>' +
+        '<div class="dash-val">' + getCompletedAchievements(data) + '/' + getTotalAchievements(data) + '</div>' +
+        '<div class="dash-label">成就进度</div>' +
+      '</div>' +
+      '<div class="dash-card pixel-card">' +
+        '<div class="dash-icon">📋</div>' +
+        '<div class="dash-val">' + data.tasks.filter(function(t) { return t.completed; }).length + '/' + data.tasks.length + '</div>' +
+        '<div class="dash-label">任务完成</div>' +
+      '</div>' +
+      '<div class="dash-card pixel-card">' +
+        '<div class="dash-icon">🔥</div>' +
+        '<div class="dash-val">' + Math.max.apply(null, data.dailies.map(function(d) { return d.streak; }).concat([0])) + '</div>' +
+        '<div class="dash-label">最高连续</div>' +
+      '</div>' +
+      '<div class="dash-card pixel-card">' +
+        '<div class="dash-icon">📖</div>' +
+        '<div class="dash-val">' + data.diaries.length + '</div>' +
+        '<div class="dash-label">日记数</div>' +
+      '</div>';
+  }
 }
 
 function renderAttrOverview(data) {
@@ -1228,7 +1277,7 @@ function renderPossessionsTab(data) {
         cardOpacity = '';
       }
       return `
-        <div class="pixel-card possession-item" style="${cardOpacity};${p.status === 'wanted' ? 'border-style:dashed;border-color:#9b4aca' : ''}">
+        <div class="pixel-card possession-item status-${p.status}" style="${cardOpacity}">
           <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
             ${p.image ? `<div><img src="${p.image}" style="width:72px;height:72px;object-fit:cover;border:2px solid var(--border);image-rendering:pixelated" loading="lazy"></div>` : `<div style="width:72px;height:72px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:#111">${p.status === 'wanted' ? '🎁' : p.status === 'consumed' ? '🗑️' : '📦'}</div>`}
             <div style="flex:1;min-width:180px">
@@ -1472,6 +1521,13 @@ function switchTab(data, tab) {
   currentTab = tab;
   qsa('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   qsa('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+  // Sync bottom nav
+  qsa('.bottom-nav-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  // Update FAB label
+  const labels = { achievements: '🏆', tasks: '📋', dailies: '📅', skills: '📚', possessions: '🎒', todos: '📝', diary: '📖', bookmarks: '🔗' };
+  el('fab-btn').textContent = labels[tab] || '+';
   renderTab(data, tab);
 }
 
@@ -1500,26 +1556,6 @@ function renderAll(data) {
 function setupEventDelegation(data) {
   const content = el('content');
 
-  // Achievement complete button
-  content.addEventListener('click', function(e) {
-    const btn = e.target.closest('.ach-complete-btn');
-    if (btn) {
-      completeAchievement(data, btn.dataset.id);
-      renderAll(data);
-      return;
-    }
-  });
-
-  // Achievement undo button
-  content.addEventListener('click', function(e) {
-    const btn = e.target.closest('.ach-undo-btn');
-    if (btn) {
-      uncompleteAchievement(data, btn.dataset.id);
-      renderAll(data);
-      return;
-    }
-  });
-
   // Achievement edit button
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.ach-edit-btn');
@@ -1534,10 +1570,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.ach-delete-btn');
     if (btn) {
-      if (confirm('确定删除该成就？')) {
+      playSfx('click');
+      showConfirm('确定删除该成就？', function() {
+        playSfx('delete');
         deleteAchievement(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1550,10 +1588,15 @@ function setupEventDelegation(data) {
       if (!t) return;
       if (t.completed) {
         uncompleteTask(data, t.id);
+        playSfx('click');
       } else {
         const result = completeTask(data, t.id);
+        playSfx(result && result.achievementCompleted ? 'achievement' : 'complete');
         if (result && result.achievementCompleted) {
-          setTimeout(() => alert(`🏅 关联成就 "${result.achievementCompleted.name}" 已自动完成！`), 100);
+          spawnSparkles();
+          setTimeout(function() {
+            showToast('🏅 关联成就 "' + result.achievementCompleted.name + '" 已自动完成！', 'achievement', 4000);
+          }, 150);
         }
       }
       renderAll(data);
@@ -1575,10 +1618,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.task-delete-btn');
     if (btn) {
-      if (confirm('确定删除该任务？')) {
+      playSfx('click');
+      showConfirm('确定删除该任务？', function() {
+        playSfx('delete');
         deleteTask(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1587,6 +1632,7 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const check = e.target.closest('.daily-check');
     if (check) {
+      playSfx('click');
       toggleDaily(data, check.dataset.id);
       renderAll(data);
       return;
@@ -1607,10 +1653,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.daily-delete-btn');
     if (btn) {
-      if (confirm('确定删除该日常？')) {
+      playSfx('click');
+      showConfirm('确定删除该日常？', function() {
+        playSfx('delete');
         deleteDaily(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1639,10 +1687,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.skill-delete-btn');
     if (btn) {
-      if (confirm('确定删除该技能？')) {
+      playSfx('click');
+      showConfirm('确定删除该技能？', function() {
+        playSfx('delete');
         deleteSkill(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1651,10 +1701,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.pos-consume-btn');
     if (btn) {
-      if (confirm('确定已用完/吃掉该物品？')) {
+      playSfx('click');
+      showConfirm('确定已用完/吃掉该物品？', function() {
         consumePossession(data, btn.dataset.id);
+        showToast('物品已标记为已用完', 'info');
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1663,11 +1715,14 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.pos-buy-btn');
     if (btn) {
+      playSfx('click');
       const p = data.possessions.find(x => x.id === btn.dataset.id);
       if (p) {
         const price = prompt('输入实际购买价格 (¥)：', p.targetPrice || '0');
         if (price !== null) {
           buyPossession(data, btn.dataset.id, parseFloat(price) || 0);
+          playSfx('complete');
+          showToast('🎉 已购入！', 'success');
           renderAll(data);
         }
       }
@@ -1679,9 +1734,11 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.pos-sell-btn');
     if (btn) {
+      playSfx('click');
       const price = prompt('输入出售价格 (¥)：', '0');
       if (price !== null) {
         sellPossession(data, btn.dataset.id, parseFloat(price) || 0);
+        showToast('物品已出售', 'info');
         renderAll(data);
       }
       return;
@@ -1702,10 +1759,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.pos-delete-btn');
     if (btn) {
-      if (confirm('确定删除该物品？')) {
+      playSfx('click');
+      showConfirm('确定删除该物品？', function() {
+        playSfx('delete');
         deletePossession(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1714,6 +1773,7 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const check = e.target.closest('.todo-check');
     if (check) {
+      playSfx('click');
       toggleTodo(data, check.dataset.id);
       renderAll(data);
       return;
@@ -1734,10 +1794,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.todo-delete-btn');
     if (btn) {
-      if (confirm('确定删除该待办？')) {
+      playSfx('click');
+      showConfirm('确定删除该待办？', function() {
+        playSfx('delete');
         deleteTodo(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1756,10 +1818,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.diary-delete-btn');
     if (btn) {
-      if (confirm('确定删除这篇日记？')) {
+      playSfx('click');
+      showConfirm('确定删除这篇日记？', function() {
+        playSfx('delete');
         deleteDiary(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1778,10 +1842,12 @@ function setupEventDelegation(data) {
   content.addEventListener('click', function(e) {
     const btn = e.target.closest('.bm-delete-btn');
     if (btn) {
-      if (confirm('确定删除该收藏？')) {
+      playSfx('click');
+      showConfirm('确定删除该收藏？', function() {
+        playSfx('delete');
         deleteBookmark(data, btn.dataset.id);
         renderAll(data);
-      }
+      });
       return;
     }
   });
@@ -1824,22 +1890,97 @@ function setupEventDelegation(data) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(ev) {
-      if (confirm('导入将覆盖当前数据，确定继续？')) {
+      showConfirm('导入将覆盖当前数据，确定继续？', function() {
         const result = importData(data, ev.target.result);
         if (result) {
-          // Update the current data reference
           Object.assign(data, result);
-          // Reload from storage to get a fresh reference
-          window.location.reload();
+          showToast('导入成功！正在刷新...', 'success');
+          setTimeout(function() { window.location.reload(); }, 600);
         } else {
-          alert('导入失败：无效的数据格式');
+          showToast('导入失败：无效的数据格式', 'error');
         }
-      }
+      });
     };
     reader.readAsText(file);
     this.value = '';
   };
-}
+
+  // Sound toggle
+  el('btn-sound').onclick = function() {
+    const on = toggleSound();
+    this.textContent = on ? '🔊' : '🔇';
+    this.classList.toggle('on', on);
+  };
+  el('btn-sound').classList.toggle('on', soundEnabled);
+  el('btn-sound').textContent = soundEnabled ? '🔊' : '🔇';
+
+  // Bottom Nav click handler
+  const bnBtns = qsa('.bottom-nav-btn');
+  bnBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      playSfx('click');
+      switchTab(data, this.dataset.tab);
+      // Scroll active button into view
+      this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    });
+  });
+
+  // FAB button - quick add based on current tab
+  el('fab-btn').onclick = function() {
+    playSfx('click');
+    switch (currentTab) {
+      case 'achievements': showAchievementModal(data, null); break;
+      case 'tasks': showTaskModal(data, null); break;
+      case 'dailies': showDailyModal(data, null); break;
+      case 'skills': showSkillModal(data, null); break;
+      case 'possessions': showPossessionModal(data, null); break;
+      case 'todos': showTodoModal(data, null); break;
+      case 'diary': showDiaryModal(data, null); break;
+      case 'bookmarks': showBookmarkModal(data, null); break;
+      default: showAchievementModal(data, null); break;
+    }
+  };
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Escape') {
+      closeModal();
+      const co = document.querySelector('.confirm-overlay');
+      if (co) co.parentNode.removeChild(co);
+    }
+    // Number keys for tabs
+    const tabKeys = ['1','2','3','4','5','6','7','8','9','0','-'];
+    const tabNames = ['character','attributes','achievements','tasks','dailies','skills','possessions','todos','diary','review','bookmarks'];
+    const idx = tabKeys.indexOf(e.key);
+    if (idx >= 0 && idx < tabNames.length) {
+      switchTab(data, tabNames[idx]);
+      playSfx('click');
+    }
+  });
+
+  // Achievement complete button - add sparkle + sound
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ach-complete-btn');
+    if (btn) {
+      playSfx('achievement');
+      completeAchievement(data, btn.dataset.id);
+      spawnSparkles();
+      showToast('🏆 成就解锁！', 'achievement', 4000);
+      renderAll(data);
+      return;
+    }
+  });
+
+  // Achievement undo button
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.ach-undo-btn');
+    if (btn) {
+      uncompleteAchievement(data, btn.dataset.id);
+      renderAll(data);
+      return;
+    }
+  });
 
 // --- Init ---
 

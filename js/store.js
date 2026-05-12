@@ -132,7 +132,7 @@ function saveData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     console.error('Failed to save data:', e);
-    alert('保存失败，请检查浏览器存储空间。');
+    showToast('保存失败，请检查浏览器存储空间。', 'error', 5000);
   }
 }
 
@@ -857,3 +857,220 @@ function getUserBMI(data) {
 function getUserBMICategory(data) {
   return getBMICategory(getUserBMI(data));
 }
+
+// --- Level & XP System ---
+
+function getLevel(totalPoints) {
+  if (totalPoints <= 0) return { level: 1, title: '新手冒险者', xp: 0, xpNext: 50, xpProgress: 0 };
+  const thresholds = [
+    { level: 1, min: 0, max: 49, title: '新手冒险者', xpBase: 0 },
+    { level: 2, min: 50, max: 119, title: '初级勇士', xpBase: 50 },
+    { level: 3, min: 120, max: 209, title: '资深战士', xpBase: 120 },
+    { level: 4, min: 210, max: 319, title: '精英骑士', xpBase: 210 },
+    { level: 5, min: 320, max: 449, title: '皇家卫士', xpBase: 320 },
+    { level: 6, min: 450, max: 599, title: '传说英雄', xpBase: 450 },
+    { level: 7, min: 600, max: 769, title: '史诗勇者', xpBase: 600 },
+    { level: 8, min: 770, max: 959, title: '神话领主', xpBase: 770 },
+    { level: 9, min: 960, max: 1169, title: '半神之王', xpBase: 960 },
+    { level: 10, min: 1170, max: Infinity, title: '创世之神', xpBase: 1170 },
+  ];
+  for (const t of thresholds) {
+    if (totalPoints >= t.min && totalPoints <= t.max) {
+      const xp = totalPoints - t.xpBase;
+      const xpNext = t.max + 1 - t.xpBase;
+      const xpProgress = Math.min(100, Math.round((xp / xpNext) * 100));
+      return { level: t.level, title: t.title, xp, xpNext, xpProgress };
+    }
+  }
+  return { level: 10, title: '创世之神', xp: totalPoints - 1170, xpNext: 0, xpProgress: 100 };
+}
+
+function getLevelIcon(level) {
+  const icons = ['', '⚔️', '🛡️', '🗡️', '🏰', '👑', '🌟', '💫', '🔮', '🌈', '☀️'];
+  return icons[level] || '☀️';
+}
+
+// --- Toast Notification System ---
+
+let toastIdCounter = 0;
+
+function showToast(message, type, duration) {
+  type = type || 'info';
+  duration = duration || 3000;
+
+  var container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  var toast = document.createElement('div');
+  var icons = { success: '✓', error: '✗', info: 'ℹ', warning: '⚠', achievement: '🏆' };
+  var icon = icons[type] || '';
+  toast.className = 'toast toast-' + type;
+  toast.innerHTML = '<span>' + icon + '</span><span>' + message + '</span>';
+
+  if (type === 'achievement') {
+    duration = 4000;
+    toast.style.animationDuration = '0.3s, 0.5s, 0.3s';
+    toast.style.animationDelay = '0s, 0.3s, 3.5s';
+  }
+
+  container.appendChild(toast);
+
+  var toastId = ++toastIdCounter;
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, duration);
+
+  return toastId;
+}
+
+// --- Pixel Confirm Dialog (replaces confirm()) ---
+
+function showConfirm(message, onOk, onCancel) {
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+
+  var dialog = document.createElement('div');
+  dialog.className = 'confirm-dialog';
+  dialog.innerHTML =
+    '<div class="confirm-icon">⚔️</div>' +
+    '<div class="confirm-msg">' + message + '</div>' +
+    '<div class="confirm-actions">' +
+      '<button class="btn btn-sm confirm-no-btn">取消</button>' +
+      '<button class="btn btn-accent btn-sm confirm-yes-btn">确定</button>' +
+    '</div>';
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  function cleanup() {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  dialog.querySelector('.confirm-yes-btn').onclick = function() {
+    cleanup();
+    if (onOk) onOk();
+  };
+
+  dialog.querySelector('.confirm-no-btn').onclick = function() {
+    cleanup();
+    if (onCancel) onCancel();
+  };
+
+  overlay.onclick = function(e) {
+    if (e.target === overlay) {
+      cleanup();
+      if (onCancel) onCancel();
+    }
+  };
+}
+
+// --- Sparkle Effect (for achievements) ---
+
+function spawnSparkles() {
+  var container = document.createElement('div');
+  container.className = 'sparkle-container';
+  document.body.appendChild(container);
+
+  var emojis = ['✨', '🌟', '💫', '⭐', '🎉', '💎', '🔥', '⚡'];
+  for (var i = 0; i < 12; i++) {
+    setTimeout(function() {
+      var particle = document.createElement('span');
+      particle.className = 'sparkle-particle';
+      particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      particle.style.left = (10 + Math.random() * 80) + '%';
+      particle.style.top = (10 + Math.random() * 70) + '%';
+      particle.style.animationDuration = (0.6 + Math.random() * 0.8) + 's';
+      particle.style.animationDelay = '0s';
+      particle.style.fontSize = (14 + Math.random() * 20) + 'px';
+      container.appendChild(particle);
+      setTimeout(function() {
+        if (particle.parentNode) particle.parentNode.removeChild(particle);
+      }, 1200);
+    }, i * 40);
+  }
+
+  setTimeout(function() {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  }, 1500);
+}
+
+// --- Sound System (Web Audio API, no files needed) ---
+
+var soundEnabled = true;
+
+function initSoundSetting() {
+  try { soundEnabled = localStorage.getItem('life-rpg-sound') !== 'off'; } catch(e) {}
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  try { localStorage.setItem('life-rpg-sound', soundEnabled ? 'on' : 'off'); } catch(e) {}
+  return soundEnabled;
+}
+
+function playSfx(type) {
+  if (!soundEnabled) return;
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    switch (type) {
+      case 'click':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.setValueAtTime(600, ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+        break;
+      case 'complete':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(523, ctx.currentTime);
+        osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+        break;
+      case 'achievement':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(523, ctx.currentTime);
+        osc.frequency.setValueAtTime(659, ctx.currentTime + 0.12);
+        osc.frequency.setValueAtTime(784, ctx.currentTime + 0.24);
+        osc.frequency.setValueAtTime(1047, ctx.currentTime + 0.36);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+        break;
+      case 'delete':
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300, ctx.currentTime);
+        osc.frequency.setValueAtTime(200, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+        break;
+      default:
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        gain.gain.setValueAtTime(0.06, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.08);
+    }
+  } catch(e) { /* Silently fail if audio not supported */ }
+}
+
+initSoundSetting();
