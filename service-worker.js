@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-rpg-v2';
+const CACHE_NAME = 'life-rpg-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -29,23 +29,32 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-  // Only handle GET requests for same origin
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      // Return cached, then update cache in background
-      const fetchPromise = fetch(e.request).then(function(response) {
-        if (response.ok) {
+  // Network-first strategy for same-origin resources (always get latest)
+  if (e.request.url.startsWith(self.location.origin)) {
+    e.respondWith(
+      fetch(e.request).then(function(response) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(e.request, clone);
+        });
+        return response;
+      }).catch(function() {
+        return caches.match(e.request);
+      })
+    );
+  } else {
+    // Cache-first for external resources (fonts, etc.)
+    e.respondWith(
+      caches.match(e.request).then(function(cached) {
+        return cached || fetch(e.request).then(function(response) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) {
             cache.put(e.request, clone);
           });
-        }
-        return response;
-      }).catch(function() {
-        return cached;
-      });
-      return cached || fetchPromise;
-    })
-  );
+          return response;
+        });
+      })
+    );
+  }
 });
