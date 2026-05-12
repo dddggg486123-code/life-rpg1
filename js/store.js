@@ -473,6 +473,83 @@ function importData(data, jsonStr) {
   }
 }
 
+// --- Encrypted Sync (AES-256-GCM + PBKDF2, no server needed) ---
+
+async function encryptData(data, password) {
+  // Generate salt and derive key
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+
+  // Encrypt
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plaintext = new TextEncoder().encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    plaintext
+  );
+
+  // Pack: salt(16) + iv(12) + ciphertext
+  const packed = new Uint8Array(16 + 12 + ciphertext.byteLength);
+  packed.set(salt, 0);
+  packed.set(iv, 16);
+  packed.set(new Uint8Array(ciphertext), 28);
+
+  // Base64 encode for easy copy-paste
+  return btoa(String.fromCharCode(...packed));
+}
+
+async function decryptData(encoded, password) {
+  try {
+    // Decode Base64
+    const packed = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+    if (packed.length < 29) throw new Error('Invalid encrypted data');
+
+    // Unpack: salt(16) + iv(12) + ciphertext
+    const salt = packed.slice(0, 16);
+    const iv = packed.slice(16, 28);
+    const ciphertext = packed.slice(28);
+
+    // Derive key with same salt
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt']
+    );
+
+    // Decrypt
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      ciphertext
+    );
+
+    const jsonStr = new TextDecoder().decode(plaintext);
+    const imported = JSON.parse(jsonStr);
+    if (!imported.attributes || !imported.achievements) {
+      throw new Error('Invalid data structure');
+    }
+    return imported;
+  } catch (e) {
+    console.error('Decryption failed:', e.message);
+    return null;
+  }
+}
+
 // --- Possessions CRUD ---
 
 function addPossession(data, pos) {

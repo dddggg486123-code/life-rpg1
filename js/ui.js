@@ -1013,6 +1013,106 @@ function showBookmarkModal(data, bm) {
   });
 }
 
+// --- Encrypted Sync Modal ---
+
+function showSyncModal(data) {
+  const body = `
+    <div style="margin-bottom:16px;padding:10px;background:rgba(224,176,64,0.08);border:2px solid var(--accent);font-size:9px;color:var(--accent)">
+      ⚠️ 请记住你的密码。密码不会存储在任何地方，丢失后无法恢复数据。
+    </div>
+    <div class="pixel-box" style="margin-bottom:12px">
+      <h3 style="color:var(--accent);margin-bottom:10px">📤 本设备 → 其他设备</h3>
+      <div class="form-group">
+        <label>设置/输入同步密码</label>
+        <input type="password" id="sync-password-export" placeholder="输入密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+      </div>
+      <div class="form-group">
+        <label>确认密码</label>
+        <input type="password" id="sync-password-export2" placeholder="再次输入密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+      </div>
+      <button type="button" class="btn btn-accent btn-sm" id="sync-encrypt-btn" style="width:100%">🔒 加密并复制到剪贴板</button>
+      <div id="sync-encrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
+    </div>
+    <div class="pixel-box">
+      <h3 style="color:var(--info);margin-bottom:10px">📥 其他设备 → 本设备</h3>
+      <div class="form-group">
+        <label>粘贴加密编码</label>
+        <textarea id="sync-paste-area" placeholder="在此粘贴加密编码..." style="font-family:monospace;font-size:10px;min-height:60px;word-break:break-all"></textarea>
+      </div>
+      <div class="form-group">
+        <label>输入同步密码</label>
+        <input type="password" id="sync-password-import" placeholder="输入加密时设置的密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+      </div>
+      <button type="button" class="btn btn-info btn-sm" id="sync-decrypt-btn" style="width:100%">🔓 解密并导入数据</button>
+      <div id="sync-decrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
+    </div>
+  `;
+
+  showModal('设备同步', body, null);
+
+  // Wire up encrypt button
+  el('sync-encrypt-btn').onclick = async function() {
+    const pw = el('sync-password-export').value;
+    const pw2 = el('sync-password-export2').value;
+    const status = el('sync-encrypt-status');
+
+    if (!pw || pw.length < 4) {
+      status.innerHTML = '<span style="color:var(--danger)">密码至少 4 个字符</span>';
+      return;
+    }
+    if (pw !== pw2) {
+      status.innerHTML = '<span style="color:var(--danger)">两次密码不一致</span>';
+      return;
+    }
+
+    try {
+      status.innerHTML = '<span style="color:var(--accent)">加密中...</span>';
+      const encoded = await encryptData(data, pw);
+      await navigator.clipboard.writeText(encoded);
+      status.innerHTML = '<span style="color:var(--success)">✓ 已复制到剪贴板！在另一台设备上粘贴并输入相同密码即可</span>';
+    } catch (e) {
+      status.innerHTML = '<span style="color:var(--danger)">加密失败: ' + e.message + '</span>';
+    }
+  };
+
+  // Wire up decrypt button
+  el('sync-decrypt-btn').onclick = async function() {
+    const encoded = el('sync-paste-area').value.trim();
+    const pw = el('sync-password-import').value;
+    const status = el('sync-decrypt-status');
+
+    if (!encoded || !pw) {
+      status.innerHTML = '<span style="color:var(--danger)">请粘贴加密编码并输入密码</span>';
+      return;
+    }
+
+    try {
+      status.innerHTML = '<span style="color:var(--accent)">解密中...</span>';
+      const imported = await decryptData(encoded, pw);
+      if (!imported) {
+        status.innerHTML = '<span style="color:var(--danger)">解密失败：密码错误或数据损坏</span>';
+        return;
+      }
+      // Merge into current data
+      const merged = {
+        ...DEFAULT_DATA,
+        ...data,
+        ...imported,
+        attributes: { ...DEFAULT_DATA.attributes, ...(data.attributes || {}), ...(imported.attributes || {}) },
+        user: { ...DEFAULT_DATA.user, ...(data.user || {}), ...(imported.user || {}) },
+      };
+      for (const key of Object.keys(merged.attributes)) {
+        merged.attributes[key] = Math.min(100, Math.max(0, merged.attributes[key]));
+      }
+      saveData(merged);
+      status.innerHTML = '<span style="color:var(--success)">✓ 导入成功！</span>';
+      setTimeout(function() { closeModal(); renderAll(data); }, 800);
+    } catch (e) {
+      status.innerHTML = '<span style="color:var(--danger)">解密失败: ' + e.message + '</span>';
+    }
+  };
+}
+
 // --- Review Tab ---
 
 let currentChartPeriod = 30;
@@ -1601,6 +1701,9 @@ function setupEventDelegation(data) {
   el('todo-filter-status').onchange = function() { renderTodosTab(data); };
   el('diary-filter-mood').onchange = function() { renderDiaryTab(data); };
   el('diary-search').oninput = function() { renderDiaryTab(data); };
+
+  // Sync
+  el('btn-sync').onclick = function() { showSyncModal(data); };
 
   // Export
   el('btn-export').onclick = function() { exportData(data); };
