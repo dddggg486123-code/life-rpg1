@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-rpg-v6';
+const CACHE_NAME = 'life-rpg-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -11,12 +11,12 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', function(e) {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', function(e) {
@@ -24,7 +24,6 @@ self.addEventListener('activate', function(e) {
     caches.keys().then(function(keys) {
       return Promise.all(keys.filter(function(k) { return k !== CACHE_NAME; }).map(function(k) { return caches.delete(k); }));
     }).then(function() {
-      // Notify all clients that a new version is ready
       return self.clients.matchAll().then(function(clients) {
         clients.forEach(function(client) {
           client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
@@ -50,18 +49,6 @@ self.addEventListener('fetch', function(e) {
         return caches.match(e.request);
       })
     );
-  } else {
-    // Cache-first for external resources (fonts, etc.)
-    e.respondWith(
-      caches.match(e.request).then(function(cached) {
-        return cached || fetch(e.request).then(function(response) {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(e.request, clone);
-          });
-          return response;
-        });
-      })
-    );
   }
+  // All fonts are now system fonts — no external resources needed
 });

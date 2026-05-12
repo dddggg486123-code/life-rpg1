@@ -55,12 +55,10 @@ const MOOD_COLORS = {
 };
 
 const FONT_OPTIONS = [
-  { id: 'pixel', name: '像素风 (Press Start 2P)', family: '"Press Start 2P", "SimHei", monospace' },
-  { id: 'retro', name: '复古印刷 (VT323)', family: '"VT323", "SimHei", monospace' },
-  { id: 'gothic', name: '哥特体 (MedievalSharp)', family: '"MedievalSharp", "SimHei", cursive' },
-  { id: 'rpg', name: 'RPG古典 (Cinzel)', family: '"Cinzel", "SimHei", serif' },
-  { id: 'clean', name: '简洁等宽 (JetBrains Mono)', family: '"JetBrains Mono", "SimHei", monospace' },
-  { id: 'hand', name: '手写体 (Caveat)', family: '"Caveat", "SimHei", cursive' },
+  { id: 'sans', name: '现代无衬线', family: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", "SimHei", sans-serif' },
+  { id: 'mono', name: '等宽复古', family: '"Courier New", "Consolas", "Menlo", "Courier", "SimHei", monospace' },
+  { id: 'serif', name: '古典衬线', family: '"SimSun", "STSong", "Songti SC", "Noto Serif SC", serif' },
+  { id: 'round', name: '圆体柔和', family: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", "SimHei", sans-serif' },
 ];
 
 const DEFAULT_DATA = {
@@ -68,7 +66,7 @@ const DEFAULT_DATA = {
     name: '冒险者',
     characterType: 'knight_male',
     customAvatar: '',
-    fontFamily: 'pixel',
+    fontFamily: 'sans',
     height: 170,
     weight: 65,
   },

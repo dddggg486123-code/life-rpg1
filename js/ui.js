@@ -340,7 +340,7 @@ function renderAttributesTab(data) {
         <div class="attr-bar-wrap" style="height:24px;min-width:100px">
           <div class="attr-bar-fill ${key}" style="width:${pct}%"></div>
         </div>
-        <div class="attr-value" style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px;min-width:70px">${val}/100</div>
+        <div class="attr-value" style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px;min-width:70px">${val}/100</div>
         <div style="display:flex;gap:2px;flex-shrink:0">
           <button class="btn btn-sm attr-minus10-btn" data-attr="${key}" title="-10" ${val < 10 ? 'disabled' : ''}>−10</button>
           <button class="btn btn-sm attr-minus5-btn" data-attr="${key}" title="-5" ${val < 5 ? 'disabled' : ''}>−5</button>
@@ -1073,11 +1073,11 @@ function showSyncModal(data) {
       <h3 style="color:var(--accent);margin-bottom:10px">📤 本设备 → 其他设备</h3>
       <div class="form-group">
         <label>设置/输入同步密码</label>
-        <input type="password" id="sync-password-export" placeholder="输入密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+        <input type="password" id="sync-password-export" placeholder="输入密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
       </div>
       <div class="form-group">
         <label>确认密码</label>
-        <input type="password" id="sync-password-export2" placeholder="再次输入密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+        <input type="password" id="sync-password-export2" placeholder="再次输入密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
       </div>
       <button type="button" class="btn btn-accent btn-sm" id="sync-encrypt-btn" style="width:100%">🔒 加密并复制到剪贴板</button>
       <div id="sync-encrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
@@ -1090,7 +1090,7 @@ function showSyncModal(data) {
       </div>
       <div class="form-group">
         <label>输入同步密码</label>
-        <input type="password" id="sync-password-import" placeholder="输入加密时设置的密码..." style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px">
+        <input type="password" id="sync-password-import" placeholder="输入加密时设置的密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
       </div>
       <button type="button" class="btn btn-info btn-sm" id="sync-decrypt-btn" style="width:100%">🔓 解密并导入数据</button>
       <div id="sync-decrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
