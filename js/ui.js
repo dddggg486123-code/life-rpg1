@@ -293,6 +293,8 @@ function renderAttributesTab(data) {
         </div>
         <div class="attr-value" style="font-family:'Press Start 2P','SimHei',monospace;font-size:11px;min-width:70px">${val}/100</div>
         <div style="display:flex;gap:2px;flex-shrink:0">
+          <button class="btn btn-sm attr-minus10-btn" data-attr="${key}" title="-10" ${val < 10 ? 'disabled' : ''}>−10</button>
+          <button class="btn btn-sm attr-minus5-btn" data-attr="${key}" title="-5" ${val < 5 ? 'disabled' : ''}>−5</button>
           <button class="btn btn-sm attr-minus-btn" data-attr="${key}" title="-1" ${val <= 0 ? 'disabled' : ''}>−</button>
           <button class="btn btn-sm attr-plus-btn" data-attr="${key}" title="+1" ${val >= 100 ? 'disabled' : ''}>+</button>
           <button class="btn btn-sm attr-plus5-btn" data-attr="${key}" title="+5" ${val >= 100 ? 'disabled' : ''}>+5</button>
@@ -303,6 +305,18 @@ function renderAttributesTab(data) {
   container.innerHTML = html;
 
   // +/- button event handlers
+  container.querySelectorAll('.attr-minus10-btn').forEach(btn => {
+    btn.onclick = function() {
+      decreaseAttr(data, this.dataset.attr, 10);
+      renderAll(data);
+    };
+  });
+  container.querySelectorAll('.attr-minus5-btn').forEach(btn => {
+    btn.onclick = function() {
+      decreaseAttr(data, this.dataset.attr, 5);
+      renderAll(data);
+    };
+  });
   container.querySelectorAll('.attr-minus-btn').forEach(btn => {
     btn.onclick = function() {
       decreaseAttr(data, this.dataset.attr, 1);
@@ -911,6 +925,94 @@ function showDiaryModal(data, diary) {
   });
 }
 
+// --- Bookmarks Tab ---
+
+function renderBookmarksTab(data) {
+  const list = el('bookmark-list');
+  const empty = el('bookmark-empty');
+  const catFilter = el('bm-filter-cat');
+
+  // Build category filter options
+  const cats = [...new Set(data.bookmarks.map(b => b.category).filter(Boolean))];
+  catFilter.innerHTML = '<option value="all">全部分类</option>' +
+    cats.map(c => `<option value="${c}" ${catFilter.value === c ? 'selected' : ''}>${c}</option>`).join('');
+
+  const filterCat = catFilter.value;
+  let filtered = [...data.bookmarks];
+  if (filterCat && filterCat !== 'all') {
+    filtered = filtered.filter(b => b.category === filterCat);
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = data.bookmarks.length === 0 ? 'block' : 'none';
+    if (data.bookmarks.length > 0 && filtered.length === 0) {
+      list.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:20px">没有符合条件的收藏</p>';
+    }
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = filtered.map(b => `
+      <div class="pixel-card bookmark-item" style="margin-bottom:8px">
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="width:48px;height:48px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;background:#111;flex-shrink:0">${b.icon || '🔗'}</div>
+          <div style="flex:1;min-width:180px">
+            <a href="${b.url}" target="_blank" rel="noopener" class="task-name" style="text-decoration:none;color:var(--accent)">${b.name} 🔗</a>
+            ${b.description ? `<div class="task-desc">${b.description}</div>` : ''}
+            <div style="font-size:9px;color:var(--text-dim);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px">
+              ${b.category ? `<span>🏷️ ${b.category}</span>` : ''}
+              <span>📅 ${b.createdAt}</span>
+            </div>
+          </div>
+          <div class="task-actions" style="flex-shrink:0">
+            <button class="btn btn-sm bm-edit-btn" data-id="${b.id}">编辑</button>
+            <button class="btn btn-danger btn-sm bm-delete-btn" data-id="${b.id}">删除</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  catFilter.onchange = function() { renderBookmarksTab(data); };
+}
+
+function showBookmarkModal(data, bm) {
+  const isEdit = !!bm;
+  const title = isEdit ? '编辑收藏' : '新收藏';
+  const defaults = bm || { name: '', url: '', description: '', category: '', icon: '🔗' };
+
+  const body = `
+    <div class="form-group">
+      <label>图标</label>
+      ${iconPicker(defaults.icon)}
+    </div>
+    <div class="form-group">
+      <label>名称</label>
+      <input type="text" name="name" value="${defaults.name}" required maxlength="30">
+    </div>
+    <div class="form-group">
+      <label>网址 (URL)</label>
+      <input type="url" name="url" value="${defaults.url}" required placeholder="https://..." maxlength="500">
+    </div>
+    <div class="form-group">
+      <label>描述</label>
+      <textarea name="description" maxlength="200">${defaults.description}</textarea>
+    </div>
+    <div class="form-group">
+      <label>分类标签</label>
+      <input type="text" name="category" value="${defaults.category}" maxlength="20" placeholder="如: 工具、学习、娱乐">
+    </div>
+  `;
+
+  showModal(title, body, function(formData) {
+    if (isEdit) {
+      updateBookmark(data, bm.id, formData);
+    } else {
+      addBookmark(data, formData);
+    }
+    renderAll(data);
+  });
+}
+
 // --- Review Tab ---
 
 let currentChartPeriod = 30;
@@ -1204,6 +1306,7 @@ function renderTab(data, tab) {
     case 'todos': renderTodosTab(data); break;
     case 'diary': renderDiaryTab(data); break;
     case 'review': renderReviewTab(data); break;
+    case 'bookmarks': renderBookmarksTab(data); break;
   }
 }
 
@@ -1452,6 +1555,28 @@ function setupEventDelegation(data) {
     }
   });
 
+  // Bookmark edit
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.bm-edit-btn');
+    if (btn) {
+      const b = data.bookmarks.find(x => x.id === btn.dataset.id);
+      if (b) showBookmarkModal(data, b);
+      return;
+    }
+  });
+
+  // Bookmark delete
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.bm-delete-btn');
+    if (btn) {
+      if (confirm('确定删除该收藏？')) {
+        deleteBookmark(data, btn.dataset.id);
+        renderAll(data);
+      }
+      return;
+    }
+  });
+
   // Tab buttons
   qsa('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1467,6 +1592,7 @@ function setupEventDelegation(data) {
   el('btn-add-possession').onclick = function() { showPossessionModal(data, null); };
   el('btn-add-todo').onclick = function() { showTodoModal(data, null); };
   el('btn-add-diary').onclick = function() { showDiaryModal(data, null); };
+  el('btn-add-bookmark').onclick = function() { showBookmarkModal(data, null); };
 
   // Filter change handlers
   el('ach-filter-diff').onchange = function() { renderAchievementsTab(data); };

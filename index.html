@@ -37,6 +37,7 @@
       <button class="tab-btn" data-tab="todos">待办</button>
       <button class="tab-btn" data-tab="diary">日记</button>
       <button class="tab-btn" data-tab="review">回顾</button>
+      <button class="tab-btn" data-tab="bookmarks">收藏</button>
     </div>
 
     <!-- Content -->
@@ -276,6 +277,24 @@
           <div class="stat-item">📊 数据记录天数: <span id="stat-history-days">0</span></div>
           <div class="stat-item">✅ 活跃天数(30d): <span id="stat-active-days">0</span></div>
           <div class="stat-item">📈 总成长点数: <span id="stat-total-growth">0</span></div>
+        </div>
+      </div>
+
+      <!-- Bookmarks Tab -->
+      <div class="tab-content" id="tab-bookmarks">
+        <div class="section-header">
+          <h2>收藏链接</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-bookmark">+ 新收藏</button>
+        </div>
+        <div class="filter-bar">
+          <select id="bm-filter-cat">
+            <option value="all">全部分类</option>
+          </select>
+        </div>
+        <div class="bookmark-list" id="bookmark-list"></div>
+        <div class="empty-state" id="bookmark-empty" style="display:none">
+          <div class="empty-icon">🔗</div>
+          <p>还没有收藏，添加你常用的网站链接吧！</p>
         </div>
       </div>
     </div>

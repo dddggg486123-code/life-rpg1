@@ -91,6 +91,7 @@ const DEFAULT_DATA = {
   todos: [],
   diaries: [],
   attrHistory: [],
+  bookmarks: [],
 };
 
 function generateId() {
@@ -665,6 +666,36 @@ function getCompletionRate(data, days) {
     }
   }
   return completedDates.size;
+}
+
+// --- Bookmarks CRUD ---
+
+function addBookmark(data, bm) {
+  const b = {
+    id: generateId(),
+    name: bm.name || '',
+    url: bm.url || '',
+    description: bm.description || '',
+    category: bm.category || '',
+    icon: bm.icon || '🔗',
+    createdAt: todayStr(),
+  };
+  data.bookmarks.push(b);
+  saveData(data);
+  return b;
+}
+
+function updateBookmark(data, id, updates) {
+  const b = data.bookmarks.find(x => x.id === id);
+  if (!b) return null;
+  Object.assign(b, updates);
+  saveData(data);
+  return b;
+}
+
+function deleteBookmark(data, id) {
+  data.bookmarks = data.bookmarks.filter(x => x.id === id);
+  saveData(data);
 }
 
 // --- Stats ---
