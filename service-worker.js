@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-rpg-v4';
+const CACHE_NAME = 'life-rpg-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -22,7 +22,14 @@ self.addEventListener('install', function(e) {
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+      return Promise.all(keys.filter(function(k) { return k !== CACHE_NAME; }).map(function(k) { return caches.delete(k); }));
+    }).then(function() {
+      // Notify all clients that a new version is ready
+      return self.clients.matchAll().then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+      });
     })
   );
   self.clients.claim();
@@ -30,11 +37,11 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
-  // Network-first strategy for same-origin resources (always get latest)
+  // Network-first for same-origin (always get latest)
   if (e.request.url.startsWith(self.location.origin)) {
     e.respondWith(
       fetch(e.request).then(function(response) {
-        const clone = response.clone();
+        var clone = response.clone();
         caches.open(CACHE_NAME).then(function(cache) {
           cache.put(e.request, clone);
         });
@@ -48,7 +55,7 @@ self.addEventListener('fetch', function(e) {
     e.respondWith(
       caches.match(e.request).then(function(cached) {
         return cached || fetch(e.request).then(function(response) {
-          const clone = response.clone();
+          var clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) {
             cache.put(e.request, clone);
           });

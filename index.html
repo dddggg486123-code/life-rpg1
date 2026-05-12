@@ -75,6 +75,7 @@
       <button class="tab-btn" data-tab="diary">日记</button>
       <button class="tab-btn" data-tab="review">回顾</button>
       <button class="tab-btn" data-tab="bookmarks">收藏</button>
+      <button class="tab-btn" data-tab="accounting">记账</button>
     </div>
 
     <!-- Content -->
@@ -333,6 +334,31 @@
           <p>还没有收藏，添加你常用的网站链接吧！</p>
         </div>
       </div>
+
+      <!-- Accounting Tab -->
+      <div class="tab-content" id="tab-accounting">
+        <div class="section-header">
+          <h2>记账本</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-transaction">+ 记一笔</button>
+        </div>
+        <div class="accounting-summary" id="accounting-summary"></div>
+        <div class="filter-bar">
+          <select id="acc-filter-month">
+            <option value="">本月</option>
+          </select>
+          <select id="acc-filter-type">
+            <option value="all">全部类型</option>
+            <option value="income">收入</option>
+            <option value="expense">支出</option>
+          </select>
+        </div>
+        <div class="category-breakdown" id="category-breakdown"></div>
+        <div class="transaction-list" id="transaction-list"></div>
+        <div class="empty-state" id="transaction-empty" style="display:none">
+          <div class="empty-icon">💳</div>
+          <p>还没有账单记录，开始记账吧！</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -358,6 +384,7 @@
       <button class="bottom-nav-btn" data-tab="diary"><span class="bn-icon">📖</span>日记</button>
       <button class="bottom-nav-btn" data-tab="review"><span class="bn-icon">📈</span>回顾</button>
       <button class="bottom-nav-btn" data-tab="bookmarks"><span class="bn-icon">🔗</span>收藏</button>
+      <button class="bottom-nav-btn" data-tab="accounting"><span class="bn-icon">💳</span>记账</button>
     </div>
   </nav>
 
@@ -366,8 +393,23 @@
   <script src="js/ui.js" defer></script>
   <script src="js/app.js" defer></script>
   <script>
+    var APP_VERSION = 'v5.0';
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js');
+      navigator.serviceWorker.register('./service-worker.js').then(function(reg) {
+        // Force update check on every load
+        reg.update();
+        // Listen for new version message from SW
+        navigator.serviceWorker.addEventListener('message', function(e) {
+          if (e.data && e.data.type === 'SW_UPDATED') {
+            var toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a2e;color:#f0d060;font-family:"Press Start 2P","SimHei",monospace;font-size:10px;padding:14px 20px;border:3px solid #f0d060;text-align:center;box-shadow:4px 4px 0 rgba(0,0,0,0.5);cursor:pointer;max-width:90vw';
+            toast.textContent = '🔄 新版本已就绪，点击刷新';
+            toast.onclick = function() { window.location.reload(); };
+            document.body.appendChild(toast);
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 8000);
+          }
+        });
+      });
     }
   </script>
 </body>

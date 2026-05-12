@@ -1272,6 +1272,208 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* --- Accounting / Bookkeeping --- */
+
+.accounting-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary-card {
+  text-align: center;
+  padding: 12px 8px;
+}
+
+.summary-card .sum-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.summary-card .sum-val {
+  font-family: var(--app-font);
+  font-size: 18px;
+}
+
+.summary-card.income .sum-val { color: var(--success); }
+.summary-card.expense .sum-val { color: var(--danger); }
+.summary-card.balance .sum-val { color: var(--accent-bright); }
+.summary-card.balance.positive .sum-val { color: var(--success); }
+.summary-card.balance.negative .sum-val { color: var(--danger); }
+
+.category-breakdown {
+  margin-bottom: 12px;
+}
+
+.breakdown-title {
+  font-family: var(--app-font);
+  font-size: 10px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.category-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.category-bar-row .cat-icon {
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.category-bar-row .cat-name {
+  width: 50px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.category-bar-row .cat-bar-wrap {
+  flex: 1;
+  height: 12px;
+  background: #111;
+  border: 2px solid #333;
+}
+
+.category-bar-row .cat-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.category-bar-row .cat-bar-fill.income-bar { background: linear-gradient(90deg, #2a8040, var(--success)); }
+.category-bar-row .cat-bar-fill.expense-bar { background: linear-gradient(90deg, #a03030, var(--danger)); }
+
+.category-bar-row .cat-amount {
+  width: 70px;
+  text-align: right;
+  font-size: 10px;
+  font-family: var(--app-font);
+  flex-shrink: 0;
+}
+
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  flex-wrap: wrap;
+  border-left: 3px solid transparent;
+}
+
+.transaction-item.type-income { border-left-color: var(--success); }
+.transaction-item.type-expense { border-left-color: var(--danger); }
+
+.transaction-item .tx-icon {
+  font-size: 20px;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.transaction-item .tx-info {
+  flex: 1;
+  min-width: 120px;
+}
+
+.transaction-item .tx-name {
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.transaction-item .tx-desc {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.transaction-item .tx-amount {
+  font-family: var(--app-font);
+  font-size: 13px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.transaction-item .tx-amount.income { color: var(--success); }
+.transaction-item .tx-amount.expense { color: var(--danger); }
+
+/* Date divider */
+.tx-date-divider {
+  font-family: var(--app-font);
+  font-size: 9px;
+  color: var(--text-dim);
+  padding: 8px 4px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.tx-date-divider:first-child {
+  margin-top: 0;
+}
+
+/* Transaction type toggle */
+.type-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
+.type-toggle-btn {
+  flex: 1;
+  padding: 10px;
+  font-family: var(--app-font);
+  font-size: 11px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.type-toggle-btn.active-income {
+  background: rgba(74,192,96,0.15);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.type-toggle-btn.active-expense {
+  background: rgba(208,64,64,0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .accounting-summary {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .summary-card .sum-val {
+    font-size: 14px;
+  }
+
+  .category-bar-row .cat-amount {
+    width: 60px;
+    font-size: 9px;
+  }
+
+  .transaction-item .tx-amount {
+    font-size: 11px;
+  }
+}
+
 /* --- Scrollbar --- */
 ::-webkit-scrollbar {
   width: 8px;

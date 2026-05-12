@@ -92,6 +92,7 @@ const DEFAULT_DATA = {
   diaries: [],
   attrHistory: [],
   bookmarks: [],
+  transactions: [],
 };
 
 function generateId() {
@@ -816,6 +817,98 @@ function updateBookmark(data, id, updates) {
 function deleteBookmark(data, id) {
   data.bookmarks = data.bookmarks.filter(x => x.id === id);
   saveData(data);
+}
+
+// --- Transactions / Accounting ---
+
+var TRANSACTION_CATEGORIES = {
+  income: [
+    { id: 'salary', name: '工资', icon: '💼' },
+    { id: 'bonus', name: '奖金', icon: '🎁' },
+    { id: 'invest', name: '投资', icon: '📈' },
+    { id: 'sidejob', name: '兼职', icon: '💻' },
+    { id: 'redpacket', name: '红包', icon: '🧧' },
+    { id: 'refund', name: '退款', icon: '↩️' },
+    { id: 'other_income', name: '其他收入', icon: '💰' },
+  ],
+  expense: [
+    { id: 'food', name: '餐饮', icon: '🍜' },
+    { id: 'shopping', name: '购物', icon: '🛒' },
+    { id: 'transport', name: '交通', icon: '🚗' },
+    { id: 'housing', name: '住房', icon: '🏠' },
+    { id: 'entertain', name: '娱乐', icon: '🎮' },
+    { id: 'medical', name: '医疗', icon: '💊' },
+    { id: 'education', name: '教育', icon: '📚' },
+    { id: 'comm', name: '通讯', icon: '📱' },
+    { id: 'daily', name: '日用', icon: '🏪' },
+    { id: 'other_expense', name: '其他支出', icon: '💸' },
+  ],
+};
+
+function getCategoryInfo(type, catId) {
+  var cats = TRANSACTION_CATEGORIES[type] || [];
+  return cats.find(function(c) { return c.id === catId; }) || { name: '其他', icon: '❓' };
+}
+
+function addTransaction(data, tx) {
+  var t = {
+    id: generateId(),
+    type: tx.type || 'expense',
+    amount: parseFloat(tx.amount) || 0,
+    category: tx.category || (tx.type === 'income' ? 'other_income' : 'other_expense'),
+    description: tx.description || '',
+    date: tx.date || todayStr(),
+    createdAt: todayStr(),
+  };
+  data.transactions.push(t);
+  data.transactions.sort(function(a, b) { return b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt); });
+  saveData(data);
+  return t;
+}
+
+function updateTransaction(data, id, updates) {
+  var t = data.transactions.find(function(x) { return x.id === id; });
+  if (!t) return null;
+  Object.assign(t, updates);
+  if (updates.amount !== undefined) t.amount = parseFloat(updates.amount) || 0;
+  data.transactions.sort(function(a, b) { return b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt); });
+  saveData(data);
+  return t;
+}
+
+function deleteTransaction(data, id) {
+  data.transactions = data.transactions.filter(function(x) { return x.id !== id; });
+  saveData(data);
+}
+
+function getMonthSummary(data, yearMonth) {
+  var income = 0, expense = 0;
+  data.transactions.forEach(function(t) {
+    var tMonth = t.date.substring(0, 7);
+    if (tMonth === yearMonth) {
+      if (t.type === 'income') income += t.amount;
+      else expense += t.amount;
+    }
+  });
+  return { income: income, expense: expense, balance: income - expense };
+}
+
+function getCurrentMonth() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function getCategoryBreakdown(data, yearMonth, type) {
+  var map = {};
+  data.transactions.forEach(function(t) {
+    if (t.type !== type) return;
+    if (t.date.substring(0, 7) !== yearMonth) return;
+    var info = getCategoryInfo(type, t.category);
+    if (!map[t.category]) map[t.category] = { name: info.name, icon: info.icon, total: 0, count: 0 };
+    map[t.category].total += t.amount;
+    map[t.category].count += 1;
+  });
+  return Object.values(map).sort(function(a, b) { return b.total - a.total; });
 }
 
 // --- Stats ---

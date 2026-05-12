@@ -1513,6 +1513,222 @@ function showTodoModal(data, todo) {
   });
 }
 
+// --- Accounting Tab ---
+
+var currentAccMonth = getCurrentMonth();
+var currentAccType = 'all';
+
+function renderAccountingTab(data) {
+  // Ensure currentAccMonth is set
+  if (!currentAccMonth) currentAccMonth = getCurrentMonth();
+
+  // Month selector
+  var months = {};
+  data.transactions.forEach(function(t) {
+    var m = t.date.substring(0, 7);
+    if (!months[m]) months[m] = true;
+  });
+  var monthList = Object.keys(months).sort().reverse();
+  if (monthList.indexOf(currentAccMonth) === -1 && data.transactions.length > 0) {
+    currentAccMonth = monthList[0];
+  }
+  if (monthList.length === 0) currentAccMonth = getCurrentMonth();
+
+  var elMonth = el('acc-filter-month');
+  elMonth.innerHTML = monthList.map(function(m) {
+    return '<option value="' + m + '" ' + (m === currentAccMonth ? 'selected' : '') + '>' + m + '</option>';
+  }).join('');
+  if (monthList.length === 0) {
+    elMonth.innerHTML = '<option value="' + currentAccMonth + '">' + currentAccMonth + '</option>';
+  }
+
+  var summary = getMonthSummary(data, currentAccMonth);
+
+  // Summary cards
+  var sumHtml =
+    '<div class="summary-card pixel-card income">' +
+      '<div class="sum-label">📈 本月收入</div>' +
+      '<div class="sum-val">+¥' + summary.income.toFixed(2) + '</div>' +
+    '</div>' +
+    '<div class="summary-card pixel-card expense">' +
+      '<div class="sum-label">📉 本月支出</div>' +
+      '<div class="sum-val">-¥' + summary.expense.toFixed(2) + '</div>' +
+    '</div>' +
+    '<div class="summary-card pixel-card balance ' + (summary.balance >= 0 ? 'positive' : 'negative') + '">' +
+      '<div class="sum-label">💎 本月结余</div>' +
+      '<div class="sum-val">' + (summary.balance >= 0 ? '+' : '') + '¥' + summary.balance.toFixed(2) + '</div>' +
+    '</div>';
+  el('accounting-summary').innerHTML = sumHtml;
+
+  // Category breakdown
+  var breakdownHtml = '';
+  var typeFilter = (el('acc-filter-type') && el('acc-filter-type').value) || 'all';
+  if (typeFilter === 'all' || typeFilter === 'expense') {
+    var expenseBreakdown = getCategoryBreakdown(data, currentAccMonth, 'expense');
+    if (expenseBreakdown.length > 0) {
+      var maxTotal = expenseBreakdown[0].total || 1;
+      breakdownHtml += '<div class="breakdown-title">📉 支出分类</div>';
+      expenseBreakdown.forEach(function(cat) {
+        var pct = Math.round((cat.total / maxTotal) * 100);
+        breakdownHtml +=
+          '<div class="category-bar-row">' +
+            '<span class="cat-icon">' + cat.icon + '</span>' +
+            '<span class="cat-name">' + cat.name + '</span>' +
+            '<div class="cat-bar-wrap"><div class="cat-bar-fill expense-bar" style="width:' + pct + '%"></div></div>' +
+            '<span class="cat-amount">¥' + cat.total.toFixed(2) + '</span>' +
+          '</div>';
+      });
+    }
+  }
+  if (typeFilter === 'all' || typeFilter === 'income') {
+    var incomeBreakdown = getCategoryBreakdown(data, currentAccMonth, 'income');
+    if (incomeBreakdown.length > 0) {
+      var maxTotalIn = incomeBreakdown[0].total || 1;
+      breakdownHtml += '<div class="breakdown-title" style="margin-top:8px">📈 收入分类</div>';
+      incomeBreakdown.forEach(function(cat) {
+        var pct = Math.round((cat.total / maxTotalIn) * 100);
+        breakdownHtml +=
+          '<div class="category-bar-row">' +
+            '<span class="cat-icon">' + cat.icon + '</span>' +
+            '<span class="cat-name">' + cat.name + '</span>' +
+            '<div class="cat-bar-wrap"><div class="cat-bar-fill income-bar" style="width:' + pct + '%"></div></div>' +
+            '<span class="cat-amount">¥' + cat.total.toFixed(2) + '</span>' +
+          '</div>';
+      });
+    }
+  }
+  el('category-breakdown').innerHTML = breakdownHtml;
+
+  // Transaction list
+  var transFiltered = data.transactions.filter(function(t) {
+    var m = t.date.substring(0, 7);
+    if (m !== currentAccMonth) return false;
+    if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+    return true;
+  });
+
+  var listEl = el('transaction-list');
+  var emptyEl = el('transaction-empty');
+
+  if (transFiltered.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    if (data.transactions.length > 0) {
+      emptyEl.querySelector('p').textContent = '当前筛选条件下没有账单';
+    } else {
+      emptyEl.querySelector('p').textContent = '还没有账单记录，开始记账吧！';
+    }
+  } else {
+    emptyEl.style.display = 'none';
+    var lastDate = '';
+    listEl.innerHTML = transFiltered.map(function(t) {
+      var cat = getCategoryInfo(t.type, t.category);
+      var dateDivider = '';
+      if (t.date !== lastDate) {
+        lastDate = t.date;
+        var weekDay = ['日','一','二','三','四','五','六'][new Date(t.date).getDay()];
+        dateDivider = '<div class="tx-date-divider">📅 ' + t.date + ' 周' + weekDay + '</div>';
+      }
+      return dateDivider +
+        '<div class="pixel-card transaction-item type-' + t.type + '">' +
+          '<div class="tx-icon">' + cat.icon + '</div>' +
+          '<div class="tx-info">' +
+            '<div class="tx-name">' + cat.name + '</div>' +
+            (t.description ? '<div class="tx-desc">' + t.description + '</div>' : '') +
+          '</div>' +
+          '<div class="tx-amount ' + t.type + '">' + (t.type === 'income' ? '+' : '-') + '¥' + t.amount.toFixed(2) + '</div>' +
+          '<div class="task-actions" style="flex-shrink:0">' +
+            '<button class="btn btn-sm tx-edit-btn" data-id="' + t.id + '">编辑</button>' +
+            '<button class="btn btn-danger btn-sm tx-delete-btn" data-id="' + t.id + '">删除</button>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // Wire filters
+  var monthSelect = el('acc-filter-month');
+  if (monthSelect) {
+    monthSelect.onchange = function() {
+      currentAccMonth = this.value;
+      renderAccountingTab(data);
+    };
+  }
+  var typeSelect = el('acc-filter-type');
+  if (typeSelect) {
+    typeSelect.onchange = function() { renderAccountingTab(data); };
+  }
+}
+
+function showTransactionModal(data, tx) {
+  var isEdit = !!tx;
+  var title = isEdit ? '编辑账单' : '记一笔';
+  var defaults = tx || { type: 'expense', amount: '', category: 'food', description: '', date: todayStr() };
+
+  var incomeCats = TRANSACTION_CATEGORIES.income.map(function(c) {
+    return '<option value="' + c.id + '" ' + (defaults.category === c.id ? 'selected' : '') + '>' + c.icon + ' ' + c.name + '</option>';
+  }).join('');
+
+  var expenseCats = TRANSACTION_CATEGORIES.expense.map(function(c) {
+    return '<option value="' + c.id + '" ' + (defaults.category === c.id ? 'selected' : '') + '>' + c.icon + ' ' + c.name + '</option>';
+  }).join('');
+
+  var body =
+    '<div class="type-toggle">' +
+      '<button type="button" class="type-toggle-btn tx-type-btn ' + (defaults.type === 'income' ? 'active-income' : '') + '" data-type="income">📈 收入</button>' +
+      '<button type="button" class="type-toggle-btn tx-type-btn ' + (defaults.type === 'expense' ? 'active-expense' : '') + '" data-type="expense">📉 支出</button>' +
+    '</div>' +
+    '<input type="hidden" name="type" value="' + defaults.type + '">' +
+    '<div class="form-group">' +
+      '<label>金额 (¥)</label>' +
+      '<input type="number" name="amount" value="' + defaults.amount + '" min="0" step="0.01" placeholder="0.00" required>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>分类</label>' +
+      '<select name="category" id="tx-category-select">' +
+        (defaults.type === 'income' ? incomeCats : expenseCats) +
+      '</select>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>描述（可选）</label>' +
+      '<input type="text" name="description" value="' + defaults.description + '" maxlength="40" placeholder="备注信息...">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>日期</label>' +
+      '<input type="date" name="date" value="' + defaults.date + '">' +
+    '</div>';
+
+  showModal(title, body, function(formData) {
+    if (isEdit) {
+      updateTransaction(data, tx.id, formData);
+    } else {
+      addTransaction(data, formData);
+    }
+    renderAll(data);
+  });
+
+  // Wire type toggle buttons
+  setTimeout(function() {
+    var typeBtns = document.querySelectorAll('.tx-type-btn');
+    var typeInput = document.querySelector('input[name="type"]');
+    var catSelect = document.getElementById('tx-category-select');
+    typeBtns.forEach(function(btn) {
+      btn.onclick = function() {
+        var newType = this.dataset.type;
+        typeBtns.forEach(function(b) {
+          b.classList.remove('active-income', 'active-expense');
+          if (b.dataset.type === newType) b.classList.add(newType === 'income' ? 'active-income' : 'active-expense');
+        });
+        typeInput.value = newType;
+        // Update category options
+        var cats = TRANSACTION_CATEGORIES[newType];
+        catSelect.innerHTML = cats.map(function(c) {
+          return '<option value="' + c.id + '">' + c.icon + ' ' + c.name + '</option>';
+        }).join('');
+      };
+    });
+  }, 50);
+}
+
 // --- Tab Switching ---
 
 let currentTab = 'character';
@@ -1526,7 +1742,7 @@ function switchTab(data, tab) {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
   // Update FAB label
-  const labels = { achievements: '🏆', tasks: '📋', dailies: '📅', skills: '📚', possessions: '🎒', todos: '📝', diary: '📖', bookmarks: '🔗' };
+  var labels = { achievements: '🏆', tasks: '📋', dailies: '📅', skills: '📚', possessions: '🎒', todos: '📝', diary: '📖', bookmarks: '🔗', accounting: '💳' };
   el('fab-btn').textContent = labels[tab] || '+';
   renderTab(data, tab);
 }
@@ -1544,6 +1760,7 @@ function renderTab(data, tab) {
     case 'diary': renderDiaryTab(data); break;
     case 'review': renderReviewTab(data); break;
     case 'bookmarks': renderBookmarksTab(data); break;
+    case 'accounting': renderAccountingTab(data); break;
   }
 }
 
@@ -1852,6 +2069,30 @@ function setupEventDelegation(data) {
     }
   });
 
+  // Transaction edit
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.tx-edit-btn');
+    if (btn) {
+      var t = data.transactions.find(function(x) { return x.id === btn.dataset.id; });
+      if (t) showTransactionModal(data, t);
+      return;
+    }
+  });
+
+  // Transaction delete
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.tx-delete-btn');
+    if (btn) {
+      playSfx('click');
+      showConfirm('确定删除该账单？', function() {
+        playSfx('delete');
+        deleteTransaction(data, btn.dataset.id);
+        renderAll(data);
+      });
+      return;
+    }
+  });
+
   // Tab buttons
   qsa('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -1868,6 +2109,7 @@ function setupEventDelegation(data) {
   el('btn-add-todo').onclick = function() { showTodoModal(data, null); };
   el('btn-add-diary').onclick = function() { showDiaryModal(data, null); };
   el('btn-add-bookmark').onclick = function() { showBookmarkModal(data, null); };
+  el('btn-add-transaction').onclick = function() { showTransactionModal(data, null); };
 
   // Filter change handlers
   el('ach-filter-diff').onchange = function() { renderAchievementsTab(data); };
@@ -1937,6 +2179,7 @@ function setupEventDelegation(data) {
       case 'todos': showTodoModal(data, null); break;
       case 'diary': showDiaryModal(data, null); break;
       case 'bookmarks': showBookmarkModal(data, null); break;
+      case 'accounting': showTransactionModal(data, null); break;
       default: showAchievementModal(data, null); break;
     }
   };
@@ -1950,8 +2193,8 @@ function setupEventDelegation(data) {
       if (co) co.parentNode.removeChild(co);
     }
     // Number keys for tabs
-    const tabKeys = ['1','2','3','4','5','6','7','8','9','0','-'];
-    const tabNames = ['character','attributes','achievements','tasks','dailies','skills','possessions','todos','diary','review','bookmarks'];
+    var tabKeys = ['1','2','3','4','5','6','7','8','9','0','-','='];
+    var tabNames = ['character','attributes','achievements','tasks','dailies','skills','possessions','todos','diary','review','bookmarks','accounting'];
     const idx = tabKeys.indexOf(e.key);
     if (idx >= 0 && idx < tabNames.length) {
       switchTab(data, tabNames[idx]);
