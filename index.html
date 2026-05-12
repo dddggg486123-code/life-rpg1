@@ -9,8 +9,8 @@
   <meta name="theme-color" content="#1a1a2e">
   <meta name="description" content="人生評価システム — 像素RPG风格的人生成长追踪系统，通过成就解锁属性，像素小人随属性变化">
   <title>人生評価システム</title>
-  <link rel="preload" href="css/pixel.css?v=7" as="style">
-  <link rel="stylesheet" href="css/pixel.css?v=7">
+  <link rel="preload" href="css/pixel.css?v=8" as="style">
+  <link rel="stylesheet" href="css/pixel.css?v=8">
   <!-- All fonts are system fonts — no external requests, fast load, privacy-safe -->
   <link rel="manifest" href="manifest.json">
   <style>
@@ -386,10 +386,10 @@
     </div>
   </nav>
 
-  <script src="js/store.js?v=7" defer></script>
-  <script src="js/character.js?v=7" defer></script>
-  <script src="js/ui.js?v=7" defer></script>
-  <script src="js/app.js?v=7" defer></script>
+  <script src="js/store.js?v=8" defer></script>
+  <script src="js/character.js?v=8" defer></script>
+  <script src="js/ui.js?v=8" defer></script>
+  <script src="js/app.js?v=8" defer></script>
   <script>
     // Global error display — shows errors visibly on the page
     window.onerror = function(msg, url, line, col, err) {
@@ -406,7 +406,7 @@
       return false;
     };
 
-    var APP_VERSION = 'v7.0';
+    var APP_VERSION = 'v8.0';
 
     // Self-healing service worker: unregister old SWs first, then register new one
     if ('serviceWorker' in navigator) {
@@ -414,14 +414,14 @@
         // Unregister any old (non-v7) service workers
         var unregisterPromises = [];
         regs.forEach(function(reg) {
-          if (reg.active && reg.active.scriptURL.indexOf('v=7') === -1) {
+          if (reg.active && reg.active.scriptURL.indexOf('v=8') === -1) {
             unregisterPromises.push(reg.unregister());
           }
         });
         return Promise.all(unregisterPromises);
       }).then(function() {
         // Register the current SW
-        return navigator.serviceWorker.register('./service-worker.js?v=7');
+        return navigator.serviceWorker.register('./service-worker.js?v=8');
       }).then(function(reg) {
         reg.update();
         navigator.serviceWorker.addEventListener('message', function(e) {
