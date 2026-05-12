@@ -1,9 +1,7 @@
 /* pixel.css — Pixel RPG Theme */
 
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=MedievalSharp&family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Caveat:wght@400;700&display=swap');
-
 :root {
-  --app-font: var(--app-font);
+  --app-font: "Press Start 2P", "SimHei", "Microsoft YaHei", monospace;
   --bg-dark: #1a1a2e;
   --bg-panel: #16213e;
   --bg-card: #1f2f4a;
