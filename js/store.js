@@ -91,6 +91,9 @@ const DEFAULT_DATA = {
   attrHistory: [],
   bookmarks: [],
   transactions: [],
+  weightRecords: [],
+  lastSync: '',
+  syncHint: '',
 };
 
 function generateId() {
@@ -327,8 +330,29 @@ function toggleDaily(data, id) {
   saveData(data);
 }
 
+function getDailyCompletionLevel(d, date) {
+  var key = date || todayStr();
+  var val = d.history[key];
+  if (val === true || val === 4) return 4;
+  if (typeof val === 'number' && val >= 1 && val <= 4) return val;
+  return 0;
+}
+
+function setDailyCompletion(data, id, level) {
+  var d = data.dailies.find(function(x) { return x.id === id; });
+  if (!d) return;
+  var today = todayStr();
+  if (level === 0) {
+    delete d.history[today];
+  } else {
+    d.history[today] = Math.min(4, Math.max(1, level));
+  }
+  d.streak = calcStreak(d);
+  saveData(data);
+}
+
 function isDailyDoneToday(d) {
-  return !!d.history[todayStr()];
+  return getDailyCompletionLevel(d) >= 1;
 }
 
 function calcStreak(d) {
@@ -341,7 +365,7 @@ function calcStreak(d) {
     const dateStr = formatDate(d2);
     const dayOfWeek = (d2.getDay() + 6) % 7;
     if (!d.daysOfWeek[dayOfWeek]) continue; // not scheduled
-    if (d.history[dateStr]) {
+    if (getDailyCompletionLevel(d, dateStr) >= 1) {
       streak++;
     } else {
       break;
@@ -907,6 +931,78 @@ function getCategoryBreakdown(data, yearMonth, type) {
     map[t.category].count += 1;
   });
   return Object.values(map).sort(function(a, b) { return b.total - a.total; });
+}
+
+// --- Weight Records CRUD ---
+
+function getEffectiveWeight(record) {
+  if (record.morningWeight && record.eveningWeight) {
+    return (record.morningWeight + record.eveningWeight) / 2;
+  }
+  return record.morningWeight || record.eveningWeight || null;
+}
+
+function getWeightDataPoints(data, days) {
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (days || 90));
+  var cutoffStr = formatDate(cutoff);
+  return (data.weightRecords || [])
+    .filter(function(r) { return r.date >= cutoffStr; })
+    .sort(function(a, b) { return a.date.localeCompare(b.date); })
+    .map(function(r) {
+      var w = getEffectiveWeight(r);
+      return w !== null ? { date: r.date, value: w } : null;
+    })
+    .filter(Boolean);
+}
+
+function addWeightRecord(data, record) {
+  var existing = (data.weightRecords || []).find(function(r) { return r.date === record.date; });
+  if (existing) {
+    if (record.morningWeight !== undefined && record.morningWeight !== '') existing.morningWeight = parseFloat(record.morningWeight) || null;
+    if (record.eveningWeight !== undefined && record.eveningWeight !== '') existing.eveningWeight = parseFloat(record.eveningWeight) || null;
+    if (record.notes !== undefined) existing.notes = record.notes || '';
+    saveData(data);
+    return existing;
+  }
+  var r = {
+    id: generateId(),
+    date: record.date || todayStr(),
+    morningWeight: record.morningWeight !== undefined && record.morningWeight !== '' ? parseFloat(record.morningWeight) || null : null,
+    eveningWeight: record.eveningWeight !== undefined && record.eveningWeight !== '' ? parseFloat(record.eveningWeight) || null : null,
+    notes: record.notes || '',
+  };
+  data.weightRecords.push(r);
+  data.weightRecords.sort(function(a, b) { return a.date.localeCompare(b.date); });
+  saveData(data);
+  return r;
+}
+
+function updateWeightRecord(data, id, updates) {
+  var r = (data.weightRecords || []).find(function(x) { return x.id === id; });
+  if (!r) return null;
+  if (updates.morningWeight !== undefined) r.morningWeight = updates.morningWeight !== '' ? parseFloat(updates.morningWeight) || null : null;
+  if (updates.eveningWeight !== undefined) r.eveningWeight = updates.eveningWeight !== '' ? parseFloat(updates.eveningWeight) || null : null;
+  if (updates.notes !== undefined) r.notes = updates.notes;
+  data.weightRecords.sort(function(a, b) { return a.date.localeCompare(b.date); });
+  saveData(data);
+  return r;
+}
+
+function deleteWeightRecord(data, id) {
+  data.weightRecords = (data.weightRecords || []).filter(function(x) { return x.id !== id; });
+  saveData(data);
+}
+
+function getWeightTrend(data, days) {
+  var points = getWeightDataPoints(data, days || 30);
+  if (points.length < 2) return { label: '数据不足', icon: '⚖️', change: 0 };
+  var first = points[0].value;
+  var last = points[points.length - 1].value;
+  var change = last - first;
+  if (change < -1) return { label: '下降中', icon: '📉', change: change };
+  if (change > 1) return { label: '上升中', icon: '📈', change: change };
+  return { label: '稳定', icon: '➡️', change: change };
 }
 
 // --- Stats ---

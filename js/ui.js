@@ -643,31 +643,39 @@ function renderDailiesTab(data) {
     });
 
     list.innerHTML = sorted.map(d => {
-      const done = isDailyDoneToday(d);
+      const level = getDailyCompletionLevel(d);
       const isToday = d.daysOfWeek[today];
       const streakFire = d.streak >= 7;
 
       const dayNames = ['一','二','三','四','五','六','日'];
       const daysStr = d.daysOfWeek.map((on, i) => on ? dayNames[i] : '·').join(' ');
 
-      return `
-        <div class="pixel-card daily-item ${done ? 'completed' : ''}" style="${isToday ? '' : 'opacity:0.5'}">
-          <div class="daily-check" data-id="${d.id}" title="${done ? '撤销' : '完成'}">
-            ${done ? '✓' : ''}
-          </div>
-          <div class="daily-info">
-            <div class="daily-name">${d.name} ${isToday ? '<span style="font-size:9px;color:var(--accent)">[今日]</span>' : ''}</div>
-            <div class="daily-desc">${d.description || ''}</div>
-            <div style="font-size:9px;color:var(--text-dim);margin-top:2px">${daysStr}</div>
-          </div>
-          <div style="text-align:right">
-            <span class="streak-badge ${streakFire ? 'fire' : ''}">🔥 ${d.streak}</span>
-            <div class="daily-actions" style="margin-top:6px">
-              <button class="btn btn-sm daily-edit-btn" data-id="${d.id}">编辑</button>
-              <button class="btn btn-danger btn-sm daily-delete-btn" data-id="${d.id}">删除</button>
-            </div>
-          </div>
-        </div>`;
+      var levelHtml = '';
+      if (isToday) {
+        levelHtml = '<div class="daily-level-selector" data-id="' + d.id + '">' +
+          [1,2,3,4].map(function(l) {
+            return '<div class="level-seg level-' + l + (level >= l ? ' filled' : '') + '" data-id="' + d.id + '" data-level="' + l + '" title="' + l + '/4">' + (level >= l ? '◆' : '◇') + '</div>';
+          }).join('') +
+        '</div>';
+      } else {
+        levelHtml = '<div style="font-size:10px;color:var(--text-dim);min-width:90px">' + (level > 0 ? '已完成 ' + level + '/4' : '未完成') + '</div>';
+      }
+
+      return '<div class="pixel-card daily-item' + (level >= 4 ? ' completed' : '') + '" style="' + (isToday ? '' : 'opacity:0.5') + '">' +
+        levelHtml +
+        '<div class="daily-info">' +
+          '<div class="daily-name">' + d.name + (isToday ? ' <span style="font-size:9px;color:var(--accent)">[今日]</span>' : '') + '</div>' +
+          (d.description ? '<div class="daily-desc">' + d.description + '</div>' : '') +
+          '<div style="font-size:9px;color:var(--text-dim);margin-top:2px">' + daysStr + ' | 完成度: ' + level + '/4</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<span class="streak-badge' + (streakFire ? ' fire' : '') + '">🔥 ' + d.streak + '</span>' +
+          '<div class="daily-actions" style="margin-top:6px">' +
+            '<button class="btn btn-sm daily-edit-btn" data-id="' + d.id + '">编辑</button>' +
+            '<button class="btn btn-danger btn-sm daily-delete-btn" data-id="' + d.id + '">删除</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }).join('');
   }
 }
@@ -1065,45 +1073,66 @@ function showBookmarkModal(data, bm) {
 // --- Encrypted Sync Modal ---
 
 function showSyncModal(data) {
-  const body = `
-    <div style="margin-bottom:16px;padding:10px;background:rgba(224,176,64,0.08);border:2px solid var(--accent);font-size:9px;color:var(--accent)">
-      ⚠️ 请记住你的密码。密码不会存储在任何地方，丢失后无法恢复数据。
-    </div>
-    <div class="pixel-box" style="margin-bottom:12px">
-      <h3 style="color:var(--accent);margin-bottom:10px">📤 本设备 → 其他设备</h3>
-      <div class="form-group">
-        <label>设置/输入同步密码</label>
-        <input type="password" id="sync-password-export" placeholder="输入密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
-      </div>
-      <div class="form-group">
-        <label>确认密码</label>
-        <input type="password" id="sync-password-export2" placeholder="再次输入密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
-      </div>
-      <button type="button" class="btn btn-accent btn-sm" id="sync-encrypt-btn" style="width:100%">🔒 加密并复制到剪贴板</button>
-      <div id="sync-encrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
-    </div>
-    <div class="pixel-box">
-      <h3 style="color:var(--info);margin-bottom:10px">📥 其他设备 → 本设备</h3>
-      <div class="form-group">
-        <label>粘贴加密编码</label>
-        <textarea id="sync-paste-area" placeholder="在此粘贴加密编码..." style="font-family:monospace;font-size:10px;min-height:60px;word-break:break-all"></textarea>
-      </div>
-      <div class="form-group">
-        <label>输入同步密码</label>
-        <input type="password" id="sync-password-import" placeholder="输入加密时设置的密码..." style="font-family:'SimHei','Microsoft YaHei','PingFang SC',sans-serif;font-size:11px">
-      </div>
-      <button type="button" class="btn btn-info btn-sm" id="sync-decrypt-btn" style="width:100%">🔓 解密并导入数据</button>
-      <div id="sync-decrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>
-    </div>
-  `;
+  var lastSync = (data.lastSync || localStorage.getItem('life-rpg-last-sync')) || '从未';
+  var syncHint = (data.syncHint || localStorage.getItem('life-rpg-sync-hint')) || '';
+
+  var body = '<div style="margin-bottom:16px;padding:10px;background:rgba(224,176,64,0.08);border:2px solid var(--accent);font-size:9px;color:var(--accent)">' +
+    '⚠️ 密码不会存储在服务器上。丢失密码将无法恢复数据。<br>' +
+    '上次同步: ' + lastSync +
+  '</div>' +
+
+  '<div class="pixel-box" style="margin-bottom:12px">' +
+    '<h3 style="color:var(--accent);margin-bottom:10px">📤 本设备 → 其他设备</h3>' +
+    '<div class="form-group">' +
+      '<label>同步密码</label>' +
+      '<input type="password" id="sync-password-export" placeholder="输入密码（至少4位）..." style="font-family:\'SimHei\',\'Microsoft YaHei\',\'PingFang SC\',sans-serif;font-size:11px;width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border)">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>确认密码</label>' +
+      '<input type="password" id="sync-password-export2" placeholder="再次输入密码..." style="font-family:\'SimHei\',\'Microsoft YaHei\',\'PingFang SC\',sans-serif;font-size:11px;width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border)">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>密码提示（可选，帮助记忆）</label>' +
+      '<input type="text" id="sync-password-hint" placeholder="例: 我的生日、宠物名字" value="' + (syncHint || '') + '" style="font-family:\'SimHei\',\'Microsoft YaHei\',\'PingFang SC\',sans-serif;font-size:11px;width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border)">' +
+    '</div>' +
+    '<button type="button" class="btn btn-accent btn-sm" id="sync-encrypt-btn" style="width:100%">🔒 加密并复制</button>' +
+    '<div id="sync-encrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>' +
+  '</div>' +
+
+  '<div class="pixel-box" style="margin-bottom:12px">' +
+    '<h3 style="color:var(--info);margin-bottom:10px">📥 其他设备 → 本设备</h3>' +
+    '<div class="form-group">' +
+      '<label>粘贴加密编码</label>' +
+      '<textarea id="sync-paste-area" placeholder="在此粘贴加密编码..." style="font-family:monospace;font-size:10px;min-height:60px;word-break:break-all;width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border)"></textarea>' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>同步密码</label>' +
+      '<input type="password" id="sync-password-import" placeholder="输入加密时设置的密码..." style="font-family:\'SimHei\',\'Microsoft YaHei\',\'PingFang SC\',sans-serif;font-size:11px;width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border)">' +
+    '</div>' +
+    (syncHint ? '<div style="font-size:10px;color:var(--text-dim);margin-bottom:8px">💡 密码提示: ' + syncHint + '</div>' : '') +
+    '<button type="button" class="btn btn-info btn-sm" id="sync-decrypt-btn" style="width:100%">🔓 解密并导入</button>' +
+    '<div id="sync-decrypt-status" style="margin-top:8px;font-size:10px;text-align:center"></div>' +
+  '</div>' +
+
+  '<div class="pixel-box" style="margin-top:12px;font-size:9px;color:var(--text-dim)">' +
+    '<h3 style="margin-bottom:6px">📖 使用说明</h3>' +
+    '<ol style="padding-left:16px;margin-top:4px;line-height:1.8">' +
+      '<li>在设备A上设置密码，点击"加密并复制"</li>' +
+      '<li>通过聊天软件、邮件等方式将加密编码传到设备B</li>' +
+      '<li>在设备B上粘贴编码，输入<span style="color:var(--accent)">相同密码</span>，点击"解密并导入"</li>' +
+      '<li>数据会自动合并，不会丢失任何一台设备上的内容</li>' +
+      '<li style="color:var(--accent)">密码提示会存在本地，方便下次记忆</li>' +
+    '</ol>' +
+  '</div>';
 
   showModal('设备同步', body, null);
 
   // Wire up encrypt button
   el('sync-encrypt-btn').onclick = async function() {
-    const pw = el('sync-password-export').value;
-    const pw2 = el('sync-password-export2').value;
-    const status = el('sync-encrypt-status');
+    var pw = el('sync-password-export').value;
+    var pw2 = el('sync-password-export2').value;
+    var hint = el('sync-password-hint').value.trim();
+    var status = el('sync-encrypt-status');
 
     if (!pw || pw.length < 4) {
       status.innerHTML = '<span style="color:var(--danger)">密码至少 4 个字符</span>';
@@ -1115,9 +1144,17 @@ function showSyncModal(data) {
     }
 
     try {
-      status.innerHTML = '<span style="color:var(--accent)">加密中...</span>';
-      const encoded = await encryptData(data, pw);
+      status.innerHTML = '<span style="color:var(--accent)">🔐 加密中...</span>';
+      var encoded = await encryptData(data, pw);
       await navigator.clipboard.writeText(encoded);
+      var now = new Date().toLocaleString();
+      data.lastSync = now;
+      localStorage.setItem('life-rpg-last-sync', now);
+      if (hint) {
+        data.syncHint = hint;
+        localStorage.setItem('life-rpg-sync-hint', hint);
+      }
+      saveData(data);
       status.innerHTML = '<span style="color:var(--success)">✓ 已复制到剪贴板！在另一台设备上粘贴并输入相同密码即可</span>';
     } catch (e) {
       status.innerHTML = '<span style="color:var(--danger)">加密失败: ' + e.message + '</span>';
@@ -1126,9 +1163,9 @@ function showSyncModal(data) {
 
   // Wire up decrypt button
   el('sync-decrypt-btn').onclick = async function() {
-    const encoded = el('sync-paste-area').value.trim();
-    const pw = el('sync-password-import').value;
-    const status = el('sync-decrypt-status');
+    var encoded = el('sync-paste-area').value.trim();
+    var pw = el('sync-password-import').value;
+    var status = el('sync-decrypt-status');
 
     if (!encoded || !pw) {
       status.innerHTML = '<span style="color:var(--danger)">请粘贴加密编码并输入密码</span>';
@@ -1136,25 +1173,29 @@ function showSyncModal(data) {
     }
 
     try {
-      status.innerHTML = '<span style="color:var(--accent)">解密中...</span>';
-      const imported = await decryptData(encoded, pw);
+      status.innerHTML = '<span style="color:var(--accent)">🔓 解密中...</span>';
+      var imported = await decryptData(encoded, pw);
       if (!imported) {
         status.innerHTML = '<span style="color:var(--danger)">解密失败：密码错误或数据损坏</span>';
         return;
       }
-      // Merge into current data
-      const merged = {
+      var merged = {
         ...DEFAULT_DATA,
         ...data,
         ...imported,
         attributes: { ...DEFAULT_DATA.attributes, ...(data.attributes || {}), ...(imported.attributes || {}) },
         user: { ...DEFAULT_DATA.user, ...(data.user || {}), ...(imported.user || {}) },
       };
-      for (const key of Object.keys(merged.attributes)) {
+      for (var key in merged.attributes) {
         merged.attributes[key] = Math.min(100, Math.max(0, merged.attributes[key]));
       }
+      merged.weightRecords = merged.weightRecords || [];
+      merged.transactions = merged.transactions || [];
       saveData(merged);
-      status.innerHTML = '<span style="color:var(--success)">✓ 导入成功！</span>';
+      var now = new Date().toLocaleString();
+      data.lastSync = now;
+      localStorage.setItem('life-rpg-last-sync', now);
+      status.innerHTML = '<span style="color:var(--success)">✓ 导入成功！数据已合并</span>';
       setTimeout(function() { closeModal(); renderAll(data); }, 800);
     } catch (e) {
       status.innerHTML = '<span style="color:var(--danger)">解密失败: ' + e.message + '</span>';
@@ -1729,6 +1770,237 @@ function showTransactionModal(data, tx) {
   }, 50);
 }
 
+// --- Weight Tracking Tab ---
+
+let currentWeightPeriod = 30;
+
+function renderWeightSummary(data) {
+  var container = el('weight-summary');
+  if (!container) return;
+  var records = data.weightRecords || [];
+  if (records.length === 0) {
+    container.innerHTML = '<span style="color:var(--text-dim)">暂无记录</span>';
+    return;
+  }
+  var latest = records[records.length - 1];
+  var eff = getEffectiveWeight(latest);
+  var trend = getWeightTrend(data, currentWeightPeriod);
+  var bmi = '';
+  if (data.user.height && data.user.weight) {
+    var h = data.user.height / 100;
+    bmi = ' | BMI: ' + (data.user.weight / (h * h)).toFixed(1);
+  }
+  container.innerHTML =
+    '<div class="weight-stat"><span style="color:var(--text-dim)">最近体重</span><br><strong style="font-size:16px">' + (eff ? eff.toFixed(1) + ' kg' : '--') + '</strong></div>' +
+    '<div class="weight-stat"><span style="color:var(--text-dim)">趋势 (' + currentWeightPeriod + '天)</span><br><strong style="color:' + (trend.change < -1 ? 'var(--success)' : trend.change > 1 ? '#c4723a' : 'var(--text)') + '">' + trend.icon + ' ' + trend.label + ' ' + (trend.change !== 0 ? (trend.change > 0 ? '+' : '') + trend.change.toFixed(1) + ' kg' : '') + '</strong></div>' +
+    '<div class="weight-stat"><span style="color:var(--text-dim)">记录数</span><br><strong>' + records.length + '</strong></div>' +
+    bmi ? '<div class="weight-stat"><span style="color:var(--text-dim)">BMI</span><br><strong>' + bmi.split(': ')[1] + '</strong></div>' : '';
+}
+
+function drawWeightChart(canvas, dataPoints) {
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : { width: 300, height: 200 };
+  var w = rect.width || 300;
+  var h = 200;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  var pad = { top: 20, right: 20, bottom: 30, left: 45 };
+  var pw = w - pad.left - pad.right;
+  var ph = h - pad.top - pad.bottom;
+
+  // Background
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, w, h);
+
+  // Determine Y range dynamically
+  var values = dataPoints.map(function(p) { return p.value; });
+  var minVal = Math.min.apply(null, values);
+  var maxVal = Math.max.apply(null, values);
+  var range = maxVal - minVal;
+  if (range < 2) { range = 2; }
+  var yMin = Math.max(0, Math.floor(minVal - range * 0.2));
+  var yMax = Math.ceil(maxVal + range * 0.2);
+  var yRange = yMax - yMin;
+  if (yRange < 1) yRange = 1;
+
+  // Grid lines
+  var gridCount = 5;
+  for (var i = 0; i <= gridCount; i++) {
+    var y = pad.top + (ph / gridCount) * i;
+    var val = yMax - (yRange / gridCount) * i;
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+
+    ctx.fillStyle = '#666';
+    ctx.font = '9px "SimHei","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(1), pad.left - 6, y + 4);
+  }
+
+  // Y-axis unit label
+  ctx.fillStyle = '#888';
+  ctx.font = '8px "SimHei","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('kg', 4, 12);
+
+  // X-axis date labels
+  var step = Math.max(1, Math.floor(dataPoints.length / 6));
+  ctx.fillStyle = '#666';
+  ctx.font = '9px "SimHei","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  // Show fewer labels to avoid overlap
+  var labelStep = Math.max(1, Math.floor(dataPoints.length / 4));
+  for (var j = 0; j < dataPoints.length; j += labelStep) {
+    var x = pad.left + (pw / (dataPoints.length - 1 || 1)) * j;
+    ctx.fillText(dataPoints[j].date.slice(5), x, h - pad.bottom + 16);
+  }
+
+  // Empty check
+  if (dataPoints.length < 2) {
+    ctx.fillStyle = '#666';
+    ctx.font = '10px "SimHei","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('数据不足，需要至少两条记录', w / 2, h / 2);
+    return;
+  }
+
+  // Line
+  ctx.strokeStyle = '#60c0e0';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#60c0e0';
+  ctx.shadowBlur = 4;
+  ctx.beginPath();
+  for (var k = 0; k < dataPoints.length; k++) {
+    var lx = pad.left + (pw / (dataPoints.length - 1)) * k;
+    var ly = pad.top + ph - ((dataPoints[k].value - yMin) / yRange) * ph;
+    if (k === 0) ctx.moveTo(lx, ly);
+    else ctx.lineTo(lx, ly);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Dots
+  for (var m = 0; m < dataPoints.length; m++) {
+    var dx = pad.left + (pw / (dataPoints.length - 1)) * m;
+    var dy = pad.top + ph - ((dataPoints[m].value - yMin) / yRange) * ph;
+    ctx.fillStyle = '#60c0e0';
+    ctx.beginPath();
+    ctx.arc(dx, dy, m === dataPoints.length - 1 ? 4 : 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function renderWeightTab(data) {
+  var list = el('weight-list');
+  var empty = el('weight-empty');
+  var records = data.weightRecords || [];
+
+  if (records.length === 0 && empty) {
+    if (list) list.innerHTML = '';
+    empty.style.display = 'block';
+  } else if (empty) {
+    empty.style.display = 'none';
+  }
+
+  // Period buttons
+  qsa('#tab-weight .chart-period-btn').forEach(function(btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.period) === currentWeightPeriod);
+    btn.onclick = function() {
+      currentWeightPeriod = parseInt(this.dataset.period);
+      renderWeightTab(data);
+    };
+  });
+
+  // Update character weight from latest record
+  if (records.length > 0) {
+    var latest = records[records.length - 1];
+    var eff = getEffectiveWeight(latest);
+    if (eff !== null && eff > 0 && (!data.user.weight || Math.abs(data.user.weight - eff) > 0.5)) {
+      data.user.weight = Math.round(eff);
+      saveData(data);
+    }
+  }
+
+  renderWeightSummary(data);
+
+  // Chart
+  var canvas = el('weight-chart-canvas');
+  var dataPoints = getWeightDataPoints(data, currentWeightPeriod);
+  if (canvas && dataPoints.length > 0) {
+    drawWeightChart(canvas, dataPoints);
+  }
+
+  // Record list
+  if (list) {
+    list.innerHTML = records.slice().reverse().map(function(r) {
+      var eff = getEffectiveWeight(r);
+      var effStr = eff !== null ? eff.toFixed(1) + ' kg' : '--';
+      var mornStr = r.morningWeight !== null ? r.morningWeight.toFixed(1) : '--';
+      var eveStr = r.eveningWeight !== null ? r.eveningWeight.toFixed(1) : '--';
+      return '<div class="pixel-card weight-item">' +
+        '<div class="weight-info">' +
+          '<div class="weight-date" style="font-weight:bold;font-size:12px">' + r.date + '</div>' +
+          '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">早: ' + mornStr + ' kg | 晚: ' + eveStr + ' kg</div>' +
+          '<div style="font-size:12px;font-weight:bold;margin-top:2px;color:var(--accent-bright)">有效体重: ' + effStr + '</div>' +
+          (r.notes ? '<div style="font-size:9px;color:var(--text-dim);margin-top:4px">' + r.notes + '</div>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:4px">' +
+          '<button class="btn btn-sm weight-edit-btn" data-id="' + r.id + '">编辑</button>' +
+          '<button class="btn btn-danger btn-sm weight-delete-btn" data-id="' + r.id + '">删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+}
+
+function showWeightModal(data, record) {
+  var isEdit = !!record;
+  var title = isEdit ? '编辑体重记录' : '记录体重';
+  var defaults = record || { date: todayStr(), morningWeight: '', eveningWeight: '', notes: '' };
+
+  var bodyHtml =
+    '<div class="form-group">' +
+      '<label>日期</label>' +
+      '<input type="date" name="date" value="' + defaults.date + '" required style="width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border);font-size:12px">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>早晨体重 (kg) — 可留空</label>' +
+      '<input type="number" name="morningWeight" value="' + (defaults.morningWeight || '') + '" step="0.1" min="20" max="300" placeholder="留空则不记录" style="width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border);font-size:12px">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>晚上体重 (kg) — 可留空</label>' +
+      '<input type="number" name="eveningWeight" value="' + (defaults.eveningWeight || '') + '" step="0.1" min="20" max="300" placeholder="留空则不记录" style="width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border);font-size:12px">' +
+    '</div>' +
+    '<div class="form-group">' +
+      '<label>备注（可选）</label>' +
+      '<textarea name="notes" maxlength="100" style="width:100%;padding:8px;background:#111;color:var(--text);border:2px solid var(--border);font-size:12px;min-height:50px">' + (defaults.notes || '') + '</textarea>' +
+    '</div>' +
+    '<p style="font-size:9px;color:var(--text-dim);margin-top:8px">早晚都填 → 取平均值。只填一个 → 取那一个。</p>';
+
+  showModal(title, bodyHtml, function(formData) {
+    if (!formData.morningWeight && !formData.eveningWeight) {
+      showToast('请至少填写早晨或晚上体重', 'error', 3000);
+      return false;
+    }
+    if (isEdit) {
+      updateWeightRecord(data, record.id, formData);
+    } else {
+      addWeightRecord(data, formData);
+    }
+    renderAll(data);
+  });
+}
+
 // --- Tab Switching ---
 
 let currentTab = 'character';
@@ -1742,7 +2014,7 @@ function switchTab(data, tab) {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
   // Update FAB label
-  var labels = { achievements: '🏆', tasks: '📋', dailies: '📅', skills: '📚', possessions: '🎒', todos: '📝', diary: '📖', bookmarks: '🔗', accounting: '💳' };
+  var labels = { achievements: '🏆', tasks: '📋', dailies: '📅', skills: '📚', possessions: '🎒', todos: '📝', diary: '📖', bookmarks: '🔗', accounting: '💳', weight: '⚖️' };
   el('fab-btn').textContent = labels[tab] || '+';
   renderTab(data, tab);
 }
@@ -1761,6 +2033,7 @@ function renderTab(data, tab) {
     case 'review': renderReviewTab(data); break;
     case 'bookmarks': renderBookmarksTab(data); break;
     case 'accounting': renderAccountingTab(data); break;
+    case 'weight': renderWeightTab(data); break;
   }
 }
 
@@ -1845,13 +2118,23 @@ function setupEventDelegation(data) {
     }
   });
 
-  // Daily check toggle
+  // Daily completion level selector
   content.addEventListener('click', function(e) {
-    const check = e.target.closest('.daily-check');
-    if (check) {
+    const seg = e.target.closest('.level-seg');
+    if (seg) {
       playSfx('click');
-      toggleDaily(data, check.dataset.id);
-      renderAll(data);
+      var id = seg.dataset.id;
+      var level = parseInt(seg.dataset.level);
+      var d = data.dailies.find(function(x) { return x.id === id; });
+      if (d) {
+        var currentLevel = getDailyCompletionLevel(d);
+        if (currentLevel === level) {
+          setDailyCompletion(data, id, 0); // clear
+        } else {
+          setDailyCompletion(data, id, level);
+        }
+        renderAll(data);
+      }
       return;
     }
   });
@@ -2093,6 +2376,31 @@ function setupEventDelegation(data) {
     }
   });
 
+  // Weight edit button
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.weight-edit-btn');
+    if (btn) {
+      playSfx('click');
+      var r = (data.weightRecords || []).find(function(x) { return x.id === btn.dataset.id; });
+      if (r) showWeightModal(data, r);
+      return;
+    }
+  });
+
+  // Weight delete button
+  content.addEventListener('click', function(e) {
+    const btn = e.target.closest('.weight-delete-btn');
+    if (btn) {
+      playSfx('click');
+      showConfirm('确定删除该体重记录？', function() {
+        playSfx('delete');
+        deleteWeightRecord(data, btn.dataset.id);
+        renderAll(data);
+      });
+      return;
+    }
+  });
+
   // Tab buttons
   qsa('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -2110,6 +2418,7 @@ function setupEventDelegation(data) {
   el('btn-add-diary').onclick = function() { showDiaryModal(data, null); };
   el('btn-add-bookmark').onclick = function() { showBookmarkModal(data, null); };
   el('btn-add-transaction').onclick = function() { showTransactionModal(data, null); };
+  el('btn-add-weight').onclick = function() { showWeightModal(data, null); };
 
   // Filter change handlers
   el('ach-filter-diff').onchange = function() { renderAchievementsTab(data); };
@@ -2180,6 +2489,7 @@ function setupEventDelegation(data) {
       case 'diary': showDiaryModal(data, null); break;
       case 'bookmarks': showBookmarkModal(data, null); break;
       case 'accounting': showTransactionModal(data, null); break;
+      case 'weight': showWeightModal(data, null); break;
       default: showAchievementModal(data, null); break;
     }
   };
@@ -2193,8 +2503,8 @@ function setupEventDelegation(data) {
       if (co) co.parentNode.removeChild(co);
     }
     // Number keys for tabs
-    var tabKeys = ['1','2','3','4','5','6','7','8','9','0','-','='];
-    var tabNames = ['character','attributes','achievements','tasks','dailies','skills','possessions','todos','diary','review','bookmarks','accounting'];
+    var tabKeys = ['1','2','3','4','5','6','7','8','9','0','-','=','w'];
+    var tabNames = ['character','attributes','achievements','tasks','dailies','skills','possessions','todos','diary','review','bookmarks','accounting','weight'];
     const idx = tabKeys.indexOf(e.key);
     if (idx >= 0 && idx < tabNames.length) {
       switchTab(data, tabNames[idx]);

@@ -74,6 +74,7 @@
       <button class="tab-btn" data-tab="review">回顾</button>
       <button class="tab-btn" data-tab="bookmarks">收藏</button>
       <button class="tab-btn" data-tab="accounting">记账</button>
+      <button class="tab-btn" data-tab="weight">体重</button>
     </div>
 
     <!-- Content -->
@@ -357,6 +358,29 @@
           <p>还没有账单记录，开始记账吧！</p>
         </div>
       </div>
+
+      <!-- Weight Tracking Tab -->
+      <div class="tab-content" id="tab-weight">
+        <div class="section-header">
+          <h2>体重记录</h2>
+          <button class="btn btn-accent btn-sm" id="btn-add-weight">+ 记录体重</button>
+        </div>
+        <div class="filter-bar">
+          <button class="btn btn-sm chart-period-btn active" data-period="30">30天</button>
+          <button class="btn btn-sm chart-period-btn" data-period="90">90天</button>
+          <button class="btn btn-sm chart-period-btn" data-period="180">半年</button>
+          <button class="btn btn-sm chart-period-btn" data-period="365">全年</button>
+        </div>
+        <div class="pixel-box" style="margin-bottom:12px">
+          <div class="weight-summary" id="weight-summary" style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;margin-bottom:8px"></div>
+          <canvas id="weight-chart-canvas" style="width:100%;height:200px;border:2px solid var(--border);background:#111"></canvas>
+        </div>
+        <div class="weight-list" id="weight-list"></div>
+        <div class="empty-state" id="weight-empty" style="display:none">
+          <div class="empty-icon">⚖️</div>
+          <p>还没有体重记录，开始记录你的体重变化吧！</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -383,6 +407,7 @@
       <button class="bottom-nav-btn" data-tab="review"><span class="bn-icon">📈</span>回顾</button>
       <button class="bottom-nav-btn" data-tab="bookmarks"><span class="bn-icon">🔗</span>收藏</button>
       <button class="bottom-nav-btn" data-tab="accounting"><span class="bn-icon">💳</span>记账</button>
+      <button class="bottom-nav-btn" data-tab="weight"><span class="bn-icon">⚖️</span>体重</button>
     </div>
   </nav>
 
