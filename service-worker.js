@@ -1,4 +1,4 @@
-const CACHE_NAME = 'life-rpg-v8';
+const CACHE_NAME = 'life-rpg-v9';
 const ASSETS = [
   './index.html',
   './css/pixel.css',
@@ -27,17 +27,16 @@ self.addEventListener('activate', function(e) {
         keys.filter(function(k) { return k !== CACHE_NAME; })
             .map(function(k) { return caches.delete(k); })
       );
-    }).then(function() {
-      // Force all clients to reload to get the latest version
-      return self.clients.matchAll().then(function(clients) {
-        return Promise.all(clients.map(function(client) {
-          client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
-          return client.navigate(client.url);
-        }));
-      });
     })
   );
+  // Claim all clients immediately so the SW controls the page
   self.clients.claim();
+  // Notify clients about the update — user decides whether to reload
+  self.clients.matchAll().then(function(clients) {
+    clients.forEach(function(client) {
+      client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+    });
+  });
 });
 
 self.addEventListener('fetch', function(e) {
