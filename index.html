@@ -9,10 +9,13 @@
   <meta name="theme-color" content="#1a1a2e">
   <meta name="description" content="人生評価システム — 像素RPG风格的人生成长追踪系统，通过成就解锁属性，像素小人随属性变化">
   <title>人生評価システム</title>
-  <link rel="preload" href="css/pixel.css?v=9" as="style">
-  <link rel="stylesheet" href="css/pixel.css?v=9">
+  <link rel="preload" href="css/pixel.css?v=10" as="style">
+  <link rel="stylesheet" href="css/pixel.css?v=10">
   <!-- All fonts are system fonts — no external requests, fast load, privacy-safe -->
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <style>
     /* Critical above-fold styles — renders before pixel.css loads */
     :root{--bg-dark:#1a1a2e;--bg-panel:#16213e;--border:#4a6a8a;--text:#e0e8f0;--accent:#e0b040;--accent-bright:#f0d060}
@@ -32,6 +35,12 @@
   </style>
 </head>
 <body>
+  <!-- Install banner -->
+  <div id="install-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a2e;color:#f0d060;font-family:'SimHei','Microsoft YaHei',sans-serif;font-size:11px;padding:12px 16px;border-bottom:3px solid #f0d060;text-align:center;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
+    <span>将此应用安装到桌面，随时随地快速打开</span>
+    <button id="install-btn" class="btn btn-sm" style="background:#f0d060;color:#1a1a2e;border:none;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer">安装</button>
+    <button id="install-dismiss" style="background:none;border:none;color:#8090a0;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
   <div id="app">
     <!-- Header -->
     <div id="header" class="pixel-box">
@@ -411,10 +420,10 @@
     </div>
   </nav>
 
-  <script src="js/store.js?v=9" defer></script>
-  <script src="js/character.js?v=9" defer></script>
-  <script src="js/ui.js?v=9" defer></script>
-  <script src="js/app.js?v=9" defer></script>
+  <script src="js/store.js?v=10" defer></script>
+  <script src="js/character.js?v=10" defer></script>
+  <script src="js/ui.js?v=10" defer></script>
+  <script src="js/app.js?v=10" defer></script>
   <script>
     // Global error display — shows errors visibly on the page
     window.onerror = function(msg, url, line, col, err) {
@@ -431,7 +440,7 @@
       return false;
     };
 
-    var APP_VERSION = 'v9.0';
+    var APP_VERSION = 'v10.0';
 
     // Self-healing service worker: unregister old SWs, register current one
     if ('serviceWorker' in navigator) {
@@ -450,13 +459,13 @@
         navigator.serviceWorker.getRegistrations().then(function(regs) {
           var unregisterPromises = [];
           regs.forEach(function(reg) {
-            if (reg.active && reg.active.scriptURL.indexOf('v=9') === -1) {
+            if (reg.active && reg.active.scriptURL.indexOf('v=10') === -1) {
               unregisterPromises.push(reg.unregister());
             }
           });
           return Promise.all(unregisterPromises);
         }).then(function() {
-          return navigator.serviceWorker.register('./service-worker.js?v=9');
+          return navigator.serviceWorker.register('./service-worker.js?v=10');
         }).then(function() {
           navigator.serviceWorker.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'SW_UPDATED') {
@@ -473,6 +482,36 @@
         });
       }
     }
+
+    // Install prompt
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      var banner = document.getElementById('install-banner');
+      if (banner) { banner.style.display = 'flex'; }
+    });
+    window.addEventListener('appinstalled', function() {
+      deferredPrompt = null;
+      var banner = document.getElementById('install-banner');
+      if (banner) { banner.style.display = 'none'; }
+    });
+    document.addEventListener('click', function(e) {
+      if (e.target.id === 'install-btn') {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(result) {
+            deferredPrompt = null;
+          });
+        } else {
+          alert('安装提示未就绪。\n\niPhone: 用Safari打开 → 点分享按钮 → 添加到主屏幕\nAndroid: 在Chrome菜单中选"添加到主屏幕"');
+        }
+      }
+      if (e.target.id === 'install-dismiss') {
+        var banner = document.getElementById('install-banner');
+        if (banner) { banner.style.display = 'none'; }
+      }
+    });
   </script>
 </body>
 </html>

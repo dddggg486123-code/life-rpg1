@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <rect x="4" y="4" width="504" height="504" rx="96" fill="none" stroke="#4a6a8a" stroke-width="6"/>
+  <rect x="12" y="12" width="488" height="488" rx="88" fill="none" stroke="#2a3a5a" stroke-width="3"/>
+  <!-- Pixel sword -->
+  <g transform="translate(256,200)">
+    <!-- Blade -->
+    <rect x="-8" y="-180" width="16" height="120" fill="#c0d0e0" rx="2"/>
+    <polygon points="-8,-60 8,-60 6,-30 -6,-30" fill="#e0e8f0"/>
+    <rect x="-12" y="-170" width="24" height="12" fill="#e0e8f0" rx="3"/>
+    <!-- Guard -->
+    <rect x="-40" y="-60" width="80" height="16" fill="#e0b040" rx="4"/>
+    <rect x="-4" y="-70" width="8" height="26" fill="#f0d060"/>
+    <!-- Grip -->
+    <rect x="-10" y="-44" width="20" height="40" fill="#8a6040" rx="2"/>
+    <rect x="-14" y="-44" width="28" height="8" fill="#e0b040" rx="2"/>
+    <rect x="-14" y="0" width="28" height="8" fill="#e0b040" rx="2"/>
+    <!-- Pommel -->
+    <circle cx="0" cy="10" r="12" fill="#f0d060"/>
+  </g>
+  <!-- Stars -->
+  <circle cx="100" cy="100" r="3" fill="#f0d060" opacity="0.6"/>
+  <circle cx="400" cy="80" r="2" fill="#f0d060" opacity="0.4"/>
+  <circle cx="420" cy="380" r="3" fill="#f0d060" opacity="0.5"/>
+  <circle cx="80" cy="400" r="2" fill="#f0d060" opacity="0.4"/>
+  <circle cx="200" cy="50" r="2" fill="#f0d060" opacity="0.3"/>
+  <circle cx="350" cy="420" r="2" fill="#f0d060" opacity="0.3"/>
+  <!-- Text -->
+  <text x="256" y="350" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#e0b040" letter-spacing="4">人生RPG</text>
+  <text x="256" y="400" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#8090a0" letter-spacing="2">Life Status RPG</text>
+  <!-- Level bar -->
+  <rect x="80" y="430" width="352" height="20" rx="10" fill="#0a0a1e" stroke="#4a6a8a" stroke-width="2"/>
+  <rect x="84" y="434" width="220" height="12" rx="6" fill="#60c0e0"/>
+  <text x="256" y="470" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#8090a0">LV.1 → LV.99</text>
+</svg>

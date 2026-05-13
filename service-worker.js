@@ -1,5 +1,6 @@
-const CACHE_NAME = 'life-rpg-v9';
+const CACHE_NAME = 'life-rpg-v10';
 const ASSETS = [
+  './',
   './index.html',
   './css/pixel.css',
   './js/store.js',
@@ -7,7 +8,16 @@ const ASSETS = [
   './js/ui.js',
   './js/app.js',
   './manifest.json',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './.spa',
 ];
+
+// Static file extensions that are safe to serve cache-first
+function isStaticAsset(url) {
+  return /\.(css|js|png|svg|json|ico)$/.test(url) || url.endsWith('/');
+}
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
@@ -29,9 +39,7 @@ self.addEventListener('activate', function(e) {
       );
     })
   );
-  // Claim all clients immediately so the SW controls the page
   self.clients.claim();
-  // Notify clients about the update — user decides whether to reload
   self.clients.matchAll().then(function(clients) {
     clients.forEach(function(client) {
       client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
@@ -43,8 +51,28 @@ self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   if (!e.request.url.startsWith(self.location.origin)) return;
 
+  // For static assets: cache-first (fast, offline-ready)
+  if (isStaticAsset(e.request.url)) {
+    e.respondWith(
+      caches.match(e.request).then(function(cached) {
+        // Update cache in background
+        var fetchPromise = fetch(e.request, { cache: 'no-cache' }).then(function(response) {
+          if (response.ok) {
+            var clone = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(e.request, clone);
+            });
+          }
+          return response;
+        }).catch(function() {});
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // For HTML/dynamic: network-first with cache fallback
   e.respondWith(
-    // Always try network first, bypassing HTTP cache to avoid stale CDN
     fetch(e.request, { cache: 'no-cache' }).then(function(response) {
       if (!response.ok) throw new Error('bad response');
       var clone = response.clone();
@@ -53,21 +81,10 @@ self.addEventListener('fetch', function(e) {
       });
       return response;
     }).catch(function() {
-      // Try current cache first
       return caches.match(e.request).then(function(cached) {
         if (cached) return cached;
-        // Fallback: try any old cache
-        return caches.keys().then(function(keys) {
-          var oldChecks = keys.filter(function(k) { return k !== CACHE_NAME; })
-                              .map(function(k) {
-                                return caches.open(k).then(function(c) {
-                                  return c.match(e.request);
-                                });
-                              });
-          return Promise.all(oldChecks).then(function(results) {
-            return results.find(function(r) { return r !== undefined; }) || new Response('Offline', { status: 503 });
-          });
-        });
+        // Ultimate fallback: serve index.html (SPA)
+        return caches.match('./index.html') || new Response('Offline', { status: 503 });
       });
     })
   );
